@@ -10,17 +10,20 @@ class Shot(CircleShape):
         self.speed_reduction = 0.9  # 10% speed reduction per bounce
 
     def draw(self, screen):
-        # Change bullet color based on bounces for visual feedback
+        # Change bullet color based on bounces for visual feedback (friendly colors)
         if self.bounce_count == 0:
-            color = "white"
+            color = "cyan"          # Bright cyan - clearly friendly
         elif self.bounce_count == 1:
-            color = "yellow" 
+            color = "lightblue"     # Light blue - still friendly
         elif self.bounce_count == 2:
-            color = "orange"
+            color = "lightgreen"    # Light green - getting weaker
         else:
-            color = "red"
+            color = "white"         # White - final bounce
         
+        # Draw main bullet
         pygame.draw.circle(screen, color, self.position, self.radius)
+        # Add a subtle glow effect for friendly shots
+        pygame.draw.circle(screen, color, self.position, self.radius + 1, 1)
 
     def update(self, dt):
         self.position += self.velocity * dt

@@ -4,6 +4,7 @@ from player import *
 from asteroid import *
 from asteroidfield import *
 from starfield import *
+from enemy import *
 
 def draw_game_over_screen(screen, font, score):
     """Draw the Game Over screen with big white text on black background"""
@@ -13,13 +14,19 @@ def draw_game_over_screen(screen, font, score):
     game_over_font = pygame.font.Font(None, 72)
     game_over_text = game_over_font.render("Game Over!", True, "white")
     game_over_rect = game_over_text.get_rect()
-    game_over_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 80)
+    game_over_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100)
     
     # Create medium font for score display
     score_font = pygame.font.Font(None, 48)
     score_text = score_font.render(f"Final Score: {score}", True, "white")
     score_rect = score_text.get_rect()
-    score_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+    score_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 20)
+    
+    # Create smaller font for restart instruction
+    restart_font = pygame.font.Font(None, 36)
+    restart_text = restart_font.render("Press Y to Restart", True, "green")
+    restart_rect = restart_text.get_rect()
+    restart_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 40)
     
     # Create smaller font for exit instruction
     exit_font = pygame.font.Font(None, 36)
@@ -29,8 +36,37 @@ def draw_game_over_screen(screen, font, score):
     
     screen.blit(game_over_text, game_over_rect)
     screen.blit(score_text, score_rect)
+    screen.blit(restart_text, restart_rect)
     screen.blit(exit_text, exit_rect)
     pygame.display.flip()
+
+def reset_game():
+    """Reset all game state for a fresh start"""
+    # Clear all sprite groups
+    updatable = pygame.sprite.Group()
+    drawable = pygame.sprite.Group()
+    asteroid_group = pygame.sprite.Group()
+    shot_group = pygame.sprite.Group()
+    enemy_group = pygame.sprite.Group()
+    enemy_shot_group = pygame.sprite.Group()
+    
+    # Reassign containers
+    Player.containers = (updatable, drawable) # type: ignore
+    Asteroid.containers = (updatable, drawable, asteroid_group) # type: ignore
+    AsteroidField.containers = (updatable) # type: ignore
+    Shot.containers = (updatable, drawable, shot_group) # type: ignore
+    Enemy.containers = (updatable, drawable, enemy_group) # type: ignore
+    ShooterEnemy.containers = (updatable, drawable, enemy_group) # type: ignore
+    EnemyShot.containers = (updatable, drawable, enemy_shot_group) # type: ignore
+    
+    # Create new player and asteroid field
+    x = SCREEN_WIDTH / 2
+    y = SCREEN_HEIGHT / 2
+    player = Player(x, y)
+    asteroid_field = AsteroidField()
+    enemy_spawner = EnemySpawner(enemy_group)
+    
+    return updatable, drawable, asteroid_group, shot_group, enemy_group, enemy_shot_group, player, asteroid_field, enemy_spawner
 
 def main():
     pygame.init()
@@ -40,26 +76,11 @@ def main():
     score = 0
     game_over = False
 
-    updatable = pygame.sprite.Group()
-    drawable = pygame.sprite.Group()
-    asteroid_group = pygame.sprite.Group()
-    shot_group = pygame.sprite.Group()
-
-    Player.containers = (updatable, drawable) # type: ignore
-    Asteroid.containers = (updatable, drawable, asteroid_group) # type: ignore
-    AsteroidField.containers = (updatable) # type: ignore
-    Shot.containers = (updatable, drawable, shot_group) # type: ignore
-
-    
+    # Initialize game objects
+    updatable, drawable, asteroid_group, shot_group, enemy_group, enemy_shot_group, player, asteroid_field, enemy_spawner = reset_game()
 
     # Initialize starfield background
-    starfield = Starfield(num_layers=3, stars_per_layer=150)
-    
-    # Draw player and asteroid field
-    x = SCREEN_WIDTH / 2
-    y = SCREEN_HEIGHT / 2
-    player = Player(x, y)
-    asteroid_field = AsteroidField()
+    starfield = Starfield(num_layers=3, stars_per_layer=75)
 
     clock = pygame.time.Clock()
     dt = 0
@@ -78,6 +99,13 @@ def main():
             if game_over and event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return
+                elif event.key == pygame.K_y:
+                    # Restart the game
+                    print("Restarting game!")
+                    game_over = False
+                    score = 0
+                    updatable, drawable, asteroid_group, shot_group, enemy_group, enemy_shot_group, player, asteroid_field, enemy_spawner = reset_game()
+                    starfield = Starfield(num_layers=3, stars_per_layer=75)
         
         if not game_over:
             # Normal game logic
@@ -88,7 +116,12 @@ def main():
             starfield.draw(screen)
             starfield.add_twinkle_effect(screen)
 
+            # Update enemy spawner
+            enemy_spawner.update(dt, player)
+            
             updatable.update(dt)
+            
+            # Check asteroid collisions
             for asteroid in asteroid_group:
                 if player.check_collision(asteroid):
                     print("Game over!")
@@ -104,7 +137,32 @@ def main():
                         else:
                             score += 1
                         asteroid.split()
-
+            
+            # Check enemy collisions with player
+            if not game_over:
+                for enemy in enemy_group:
+                    if player.check_collision(enemy):
+                        print("Game over! Enemy caught you!")
+                        game_over = True
+                        break
+                        
+                    # Enemies can be shot by player
+                    for shot in shot_group:
+                        if shot.check_collision(enemy):
+                            shot.kill()
+                            enemy.kill()
+                            score += 5  # Higher score for defeating enemies
+                            break
+            
+            # Check enemy shot collisions with player
+            if not game_over:
+                for enemy_shot in enemy_shot_group:
+                    if player.check_collision(enemy_shot):
+                        print("Game over! Hit by enemy shot!")
+                        game_over = True
+                        enemy_shot.kill()
+                        break
+                    
             if not game_over:
                 for sprite in drawable:
                     sprite.draw(screen)
