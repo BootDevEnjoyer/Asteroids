@@ -1,4 +1,4 @@
-# Asteroids Game
+# A Cursor Experiment - Asteroids Game
 
 A modern take on the classic Asteroids arcade game built with Python and Pygame. Features enhanced graphics, enemy AI, bouncing bullets, and visual effects.
 
