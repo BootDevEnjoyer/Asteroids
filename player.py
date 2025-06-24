@@ -31,10 +31,17 @@ class Player(CircleShape):
 
     def move(self, dt):
         forward = pygame.Vector2(0, 1).rotate(self.rotation)
-        self.position += forward * PLAYER_SPEED * dt
+        # dt can be negative for backward movement
+        movement = forward * PLAYER_SPEED * dt
+        self.position += movement
+        # Track velocity for parallax effects (use sign of dt for direction)
+        self.velocity = forward * PLAYER_SPEED * (1 if dt > 0 else -1)
 
     def update(self, dt):
         keys = pygame.key.get_pressed()
+        
+        # Reset velocity each frame (will be set if moving)
+        self.velocity = pygame.Vector2(0, 0)
 
         if keys[pygame.K_LEFT]:
             self.rotate(-dt)
@@ -51,6 +58,9 @@ class Player(CircleShape):
         if keys[pygame.K_ESCAPE]:
             pygame.quit()
             exit()
+
+        # Handle screen wrapping
+        self.wrap_position()
 
         self.shot_cooldown -= dt
         if self.shot_cooldown < 0:
