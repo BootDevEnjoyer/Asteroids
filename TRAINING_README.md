@@ -23,7 +23,7 @@ This implementation addresses a continuous control problem where an agent learns
 
 **Value Network (Critic)**:
 
-## 🎯 Training System Overview
+## Training System Overview
 
 ### Neural Architecture
 - **Input**: 5-dimensional state vector (angle, distance, speed, alignment, angular_velocity)
@@ -34,11 +34,11 @@ This implementation addresses a continuous control problem where an agent learns
 ### Progressive Learning Phases
 | Phase | Target Behavior | Success Threshold | Duration |
 |-------|----------------|-------------------|----------|
-| 🟢 **Phase 1** | Stationary target | 70% over 30 episodes | 30-60 min |
-| 🟠 **Phase 2** | Moving target | 60% over 30 episodes | 1-3 hours |
-| 🔴 **Phase 3** | Complex patterns | 50% over 30 episodes | 3-8 hours |
+| **Phase 1** | Stationary target | 70% over 30 episodes | 30-60 min |
+| **Phase 2** | Moving target | 60% over 30 episodes | 1-3 hours |
+| **Phase 3** | Complex patterns | 50% over 30 episodes | 3-8 hours |
 
-## 🚀 Quick Training Commands
+## Quick Training Commands
 
 ```bash
 # Basic training with visualization
@@ -51,7 +51,7 @@ python run_training.py --speed 3.0
 python run_training.py --headless --speed 10.0
 ```
 
-## 📊 Model Improvement Case Study
+## Model Improvement Case Study
 
 ### The Breakthrough: From 0% to 48.1% Success
 
@@ -59,7 +59,7 @@ python run_training.py --headless --speed 10.0
 
 **Root Cause Analysis**: Three fundamental flaws were identified:
 
-#### 1. 🔄 Broken Action Space
+#### 1. Broken Action Space
 **Before**: Accumulative angle adjustments
 ```python
 target_angle = current_angle + adjustment  # Unbounded accumulation
@@ -78,7 +78,7 @@ state = [angle_to_player, distance, speed, alignment, angular_velocity]
 alignment = velocity⃗ · target_direction⃗  # Movement efficiency
 ```
 
-#### 3. 💰 Weak Reward Signal
+#### 3. Weak Reward Signal
 **Before**: Sparse distance-only rewards
 **After**: Dense behavioral shaping
 ```python
