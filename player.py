@@ -49,6 +49,11 @@ class Player(CircleShape):
         # Thrust particle system
         self.thrust_particles = []
         self.is_thrusting = False
+        
+        # Training mode attributes
+        self.killed_by_ai = False  # Track if player was killed by AI
+        self.random_target = None  # For random movement patterns
+        self.bounce_velocity = None  # For bouncing movement patterns
 
     def get_ship_points(self):
         """Generate detailed ship design with multiple polygons"""

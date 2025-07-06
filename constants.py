@@ -1,9 +1,9 @@
-SCREEN_WIDTH = 1280
-SCREEN_HEIGHT = 720
+SCREEN_WIDTH = 1600
+SCREEN_HEIGHT = 900
 
 ASTEROID_MIN_RADIUS = 20
 ASTEROID_KINDS = 3
-ASTEROID_SPAWN_RATE = 1.5  # seconds
+ASTEROID_SPAWN_RATE = 9999
 ASTEROID_MAX_RADIUS = ASTEROID_MIN_RADIUS * ASTEROID_KINDS
 
 PLAYER_RADIUS = 20
@@ -18,8 +18,8 @@ SHOT_RADIUS = 5
 ENEMY_RADIUS = 15
 ENEMY_SPEED = 50
 ENEMY_FOLLOW_SPEED = ENEMY_SPEED * 2  # Faster speed when following player
-ENEMY_MAX_COUNT = 10
-ENEMY_SPAWN_RATE = 0.5  # seconds between spawns
+ENEMY_MAX_COUNT = 2  # Even fewer enemies for clearer observation
+ENEMY_SPAWN_RATE = 3.0  # seconds between spawns (much slower for clear observation)
 ENEMY_DETECTION_RANGE = 600  # How close to player before enemy starts following
 
 # Shooter enemy constants
