@@ -110,7 +110,7 @@ def collect_state(enemy, player):
     normalized_speed = min(1.0, speed / (ENEMY_SPEED * 2))
     
     # Movement efficiency metrics
-    alignment = target_direction⃗ · velocity⃗  # ∈ [-1,1]
+    alignment = target_direction⃗ · velocity  # ∈ [-1,1]
     angular_velocity = (target_angle - current_angle) / π  # ∈ [-1,1]
     
     return tensor([angle, distance, speed, alignment, angular_velocity])
@@ -151,7 +151,7 @@ ValueNetwork(
 )
 ```
 
-## 📈 Training Performance Metrics
+## Training Performance Metrics
 
 ### Speed Benchmarks
 | Mode | FPS | Episodes/Hour | Memory | Best For |
@@ -168,7 +168,7 @@ Phase 2: Episodes 200-800  → 60% success (interception)
 Phase 3: Episodes 800-2000 → 50% success (advanced hunting)
 ```
 
-## 🛠️ Advanced Training Options
+##Training Options
 
 ### Command Line Interface
 ```bash
@@ -185,7 +185,7 @@ python run_training.py --speed 10.0 --headless
 - **Logs**: `training_log.json` (detailed episode data)
 - **Checkpoints**: `ai_brain_phase_X_milestone.pth` (phase completions)
 
-## 🔧 Troubleshooting & Optimization
+## Troubleshooting & Optimization
 
 ### Performance Issues
 ```bash
@@ -215,15 +215,13 @@ python run_training.py --speed 1.0  # Baseline measurement
 | Phase 2 completion | 2-4 hours | 800-1500 | 60% | Moving target interception |
 | Phase 3 mastery | 6-12 hours | 2000-5000 | 50% | Advanced hunting patterns |
 
-## 🎯 Best Practices
+## Best Practices
 
 1. **Monitor Early**: First 100 episodes show learning potential
 2. **Use Headless**: 2-3x performance improvement for long sessions  
 3. **Checkpoint Strategy**: Save after each phase advancement
-4. **Patience Required**: Complex behaviors need 1000+ episodes
-5. **Hardware**: Even modest CPUs can achieve good training speeds
 
-## 🔬 Research & Experimentation
+## Research & Experimentation
 
 ### Hyperparameter Tuning
 ```python
@@ -248,7 +246,7 @@ depth: 3 layers     # Sufficient for this task complexity
 
 ---
 
-**🎯 Key Insight**: The dramatic improvement from 0% to 48.1% success demonstrates that **architectural fixes often matter more than hyperparameter tuning** in AI systems. Fixing fundamental flaws in action space design, state representation, and reward structure created an immediate breakthrough that hours of parameter tweaking could never achieve. 
+**Key Insight**: The dramatic improvement from 0% to 48.1% success demonstrates that **architectural fixes often matter more than hyperparameter tuning** in AI systems. Fixing fundamental flaws in action space design, state representation, and reward structure created an immediate breakthrough that hours of parameter tweaking could never achieve. 
 
 **Optimization**:
 - Algorithm: Adam optimizer
