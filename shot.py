@@ -1,3 +1,5 @@
+"""Shot projectile with bouncing mechanics and visual feedback."""
+
 from circleshape import *
 from constants import *
 
@@ -7,58 +9,57 @@ class Shot(CircleShape):
         self.velocity = velocity
         self.bounce_count = 0
         self.max_bounces = 3
-        self.speed_reduction = 0.9  # 10% speed reduction per bounce
+        self.speed_reduction = 0.9  # velocity multiplier per bounce
 
     def draw(self, screen):
-        # Change bullet color based on bounces for visual feedback (friendly colors)
+        # color transitions based on bounce count
         if self.bounce_count == 0:
-            color = "cyan"          # Bright cyan - clearly friendly
+            color = "cyan"
         elif self.bounce_count == 1:
-            color = "lightblue"     # Light blue - still friendly
+            color = "lightblue"
         elif self.bounce_count == 2:
-            color = "lightgreen"    # Light green - getting weaker
+            color = "lightgreen"
         else:
-            color = "white"         # White - final bounce
+            color = "white"
         
-        # Draw main bullet
+        # render projectile with glow effect
         pygame.draw.circle(screen, color, self.position, self.radius)
-        # Add a subtle glow effect for friendly shots
         pygame.draw.circle(screen, color, self.position, self.radius + 1, 1)
 
     def update(self, dt):
         self.position += self.velocity * dt
         
-        # Check for bouncing off screen edges
+        # screen boundary collision detection
         bounced = False
         
-        # Bounce off left or right edges
+        # horizontal boundary collision
         if (self.position.x - self.radius <= 0 and self.velocity.x < 0) or \
            (self.position.x + self.radius >= SCREEN_WIDTH and self.velocity.x > 0):
             self.velocity.x = -self.velocity.x
-            # Keep bullet within bounds
+            # clamp position within screen bounds
             if self.position.x - self.radius <= 0:
                 self.position.x = self.radius
             else:
                 self.position.x = SCREEN_WIDTH - self.radius
             bounced = True
             
-        # Bounce off top or bottom edges
+        # vertical boundary collision
         if (self.position.y - self.radius <= 0 and self.velocity.y < 0) or \
            (self.position.y + self.radius >= SCREEN_HEIGHT and self.velocity.y > 0):
             self.velocity.y = -self.velocity.y
-            # Keep bullet within bounds
+            # clamp position within screen bounds
             if self.position.y - self.radius <= 0:
                 self.position.y = self.radius
             else:
                 self.position.y = SCREEN_HEIGHT - self.radius
             bounced = True
         
-        # Handle bounce effects
+        # process bounce mechanics
         if bounced:
             self.bounce_count += 1
-            # Reduce speed with each bounce
+            # apply velocity reduction
             self.velocity *= self.speed_reduction
             
-            # Remove bullet after max bounces
+            # destroy after exceeding bounce limit
             if self.bounce_count > self.max_bounces:
                 self.kill()

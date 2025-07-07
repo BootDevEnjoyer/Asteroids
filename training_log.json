@@ -7087,6 +7087,19 @@
           "episode_length": 7167,
           "timestamp": 1751815752.5342014,
           "session_time": 127.87679076194763
+        },
+        {
+          "episode": 165,
+          "phase": 1,
+          "reward": 3530.2935525882285,
+          "success": true,
+          "success_rate": 0.8,
+          "exploration_noise": 0.2762377319951805,
+          "learning_rate": 0.0029509037035131513,
+          "loss": 0.9935401664115489,
+          "episode_length": 5382,
+          "timestamp": 1751908340.970132,
+          "session_time": 45.18313550949097
         }
       ]
     }

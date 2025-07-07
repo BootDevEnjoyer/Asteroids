@@ -5,7 +5,7 @@ import random
 import math
 
 class ThrustParticle:
-    """Individual particle for engine thrust effect"""
+    """individual particle for engine thrust visual effect"""
     def __init__(self, x, y, velocity, life_time=0.5):
         self.position = pygame.Vector2(x, y)
         self.velocity = velocity
@@ -16,24 +16,24 @@ class ThrustParticle:
     def update(self, dt):
         self.position += self.velocity * dt
         self.life -= dt
-        # Slow down particles over time
+        # decelerate particles over time
         self.velocity *= 0.98
         
     def draw(self, screen):
         if self.life <= 0:
             return
         
-        # Fade particles as they age
+        # fade particles based on remaining lifetime
         alpha = max(0, self.life / self.max_life)
         size = self.size * alpha
         
-        # Color gradient from white to orange to red
+        # gradient from white to orange to red based on age
         if alpha > 0.7:
-            color = (255, 255, 255)  # White
+            color = (255, 255, 255)  # white
         elif alpha > 0.4:
-            color = (255, 200, 100)  # Orange
+            color = (255, 200, 100)  # orange
         else:
-            color = (255, 150, 50)   # Red-orange
+            color = (255, 150, 50)   # red-orange
             
         if size > 1:
             pygame.draw.circle(screen, color, self.position, int(size))
@@ -42,25 +42,25 @@ class Player(CircleShape):
     def __init__(self, x, y):
         super().__init__(x, y, PLAYER_RADIUS)
         self.rotation = 0
-        # Collision radius is smaller than visual radius for tighter collision detection
-        self.collision_radius = PLAYER_RADIUS * 0.7  # 70% of visual radius
+        # reduced collision radius for more forgiving gameplay
+        self.collision_radius = PLAYER_RADIUS * 0.7
         self.shot_cooldown = 0.0
         
-        # Thrust particle system
+        # particle system for engine thrust effects
         self.thrust_particles = []
         self.is_thrusting = False
         
-        # Training mode attributes
-        self.killed_by_ai = False  # Track if player was killed by AI
-        self.random_target = None  # For random movement patterns
-        self.bounce_velocity = None  # For bouncing movement patterns
+        # ai training mode attributes
+        self.killed_by_ai = False
+        self.random_target = None
+        self.bounce_velocity = None
 
     def get_ship_points(self):
-        """Generate detailed ship design with multiple polygons"""
+        """generate detailed ship geometry with multiple polygon sections"""
         forward = pygame.Vector2(0, 1).rotate(self.rotation)
         right = pygame.Vector2(0, 1).rotate(self.rotation + 90)
         
-        # Main ship body (elongated triangle)
+        # main hull geometry points
         nose = self.position + forward * self.radius
         rear_center = self.position - forward * self.radius * 0.8
         wing_left = self.position - forward * self.radius * 0.3 - right * self.radius * 0.6
@@ -90,27 +90,26 @@ class Player(CircleShape):
         return [a, b, c]
 
     def spawn_thrust_particles(self, dt):
-        """Create thrust particles behind the ship when thrusting"""
+        """generate thrust particles behind ship during acceleration"""
         if not self.is_thrusting:
             return
             
-        # Spawn multiple particles per frame
+        # spawn multiple particles per frame for density
         particles_per_frame = 8
         
         for _ in range(particles_per_frame):
-            # Position particles at the rear of the ship with some spread
+            # position particles at ship rear with spatial variance
             rear_offset = pygame.Vector2(0, -1).rotate(self.rotation) * self.radius * 0.8
             spread = pygame.Vector2(random.uniform(-0.3, 0.3), random.uniform(-0.3, 0.3)).rotate(self.rotation) * self.radius
             
             particle_pos = self.position + rear_offset + spread
             
-            # Particle velocity should be opposite to ship's forward direction
+            # velocity opposing ship forward direction with randomization
             base_velocity = pygame.Vector2(0, -1).rotate(self.rotation) * random.uniform(80, 150)
-            # Add some randomness
             velocity_spread = pygame.Vector2(random.uniform(-50, 50), random.uniform(-30, 30))
             particle_velocity = base_velocity + velocity_spread
             
-            # Create particle with random lifetime
+            # create particle with random lifetime variance
             particle = ThrustParticle(
                 particle_pos.x, 
                 particle_pos.y, 
@@ -120,30 +119,30 @@ class Player(CircleShape):
             self.thrust_particles.append(particle)
 
     def update_thrust_particles(self, dt):
-        """Update and clean up thrust particles"""
-        # Update all particles
+        """update particle states and remove expired particles"""
+        # update all particles and remove dead ones
         for particle in self.thrust_particles[:]:
             particle.update(dt)
             if particle.life <= 0:
                 self.thrust_particles.remove(particle)
 
     def draw(self, screen):
-        # Draw thrust particles first (behind ship)
+        # render thrust particles behind ship
         for particle in self.thrust_particles:
             particle.draw(screen)
         
-        # Draw detailed ship
+        # render detailed ship geometry
         ship_parts = self.get_ship_points()
         
-        # Main body
+        # main hull structure
         pygame.draw.polygon(screen, "white", ship_parts['main_body'], 2)
         
-        # Cockpit
+        # cockpit section
         pygame.draw.polygon(screen, "cyan", ship_parts['cockpit'], 2)
         
-        # Engine sections
+        # engine sections with thrust state visualization
         if self.is_thrusting:
-            # Draw engines with thrust glow
+            # active thrust visualization
             pygame.draw.polygon(screen, "yellow", ship_parts['engine_left'], 2)
             pygame.draw.polygon(screen, "yellow", ship_parts['engine_right'], 2)
         else:
@@ -151,7 +150,7 @@ class Player(CircleShape):
             pygame.draw.polygon(screen, "gray", ship_parts['engine_right'], 2)
 
     def check_collision(self, other):
-        """Override collision detection to use smaller collision radius for player"""
+        """collision detection using reduced radius for improved gameplay"""
         distance = pygame.Vector2.distance_to(self.position, other.position)
         return distance <= self.collision_radius + other.radius
 
@@ -160,16 +159,16 @@ class Player(CircleShape):
 
     def move(self, dt):
         forward = pygame.Vector2(0, 1).rotate(self.rotation)
-        # dt can be negative for backward movement
+        # support forward and backward movement via dt sign
         movement = forward * PLAYER_SPEED * dt
         self.position += movement
-        # Track velocity for parallax effects (use sign of dt for direction)
+        # track velocity for parallax and visual effects
         self.velocity = forward * PLAYER_SPEED * (1 if dt > 0 else -1)
 
     def update(self, dt):
         keys = pygame.key.get_pressed()
         
-        # Reset velocity and thrust state each frame
+        # reset velocity and thrust state each frame
         self.velocity = pygame.Vector2(0, 0)
         self.is_thrusting = False
 
@@ -190,11 +189,11 @@ class Player(CircleShape):
             pygame.quit()
             exit()
 
-        # Update particle systems
+        # update visual effect systems
         self.spawn_thrust_particles(dt)
         self.update_thrust_particles(dt)
 
-        # Handle screen wrapping
+        # handle screen boundary wrapping
         self.wrap_position()
 
         self.shot_cooldown -= dt
