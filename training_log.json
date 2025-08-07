@@ -7100,6 +7100,84 @@
           "episode_length": 5382,
           "timestamp": 1751908340.970132,
           "session_time": 45.18313550949097
+        },
+        {
+          "episode": 166,
+          "phase": 1,
+          "reward": 2102.221803832297,
+          "success": false,
+          "success_rate": 0.8,
+          "exploration_noise": 0.2760996131291829,
+          "learning_rate": 0.0029506086131428,
+          "loss": 1.0001488896086812,
+          "episode_length": 668,
+          "timestamp": 1754598013.0957289,
+          "session_time": 7.107569456100464
+        },
+        {
+          "episode": 167,
+          "phase": 1,
+          "reward": 2304.0438506890137,
+          "success": false,
+          "success_rate": 0.7,
+          "exploration_noise": 0.27596156332261834,
+          "learning_rate": 0.0029503135522814857,
+          "loss": 1.0096226008608937,
+          "episode_length": 442,
+          "timestamp": 1754598016.72389,
+          "session_time": 10.735730171203613
+        },
+        {
+          "episode": 168,
+          "phase": 1,
+          "reward": 186.64730987245105,
+          "success": false,
+          "success_rate": 0.7,
+          "exploration_noise": 0.27582358254095707,
+          "learning_rate": 0.0029500185209262574,
+          "loss": 0.9809180740267038,
+          "episode_length": 66,
+          "timestamp": 1754598017.274093,
+          "session_time": 11.285934448242188
+        },
+        {
+          "episode": 169,
+          "phase": 1,
+          "reward": 1676.4220262646213,
+          "success": false,
+          "success_rate": 0.6,
+          "exploration_noise": 0.2756856707496866,
+          "learning_rate": 0.0029497235190741647,
+          "loss": 0.9303088113665581,
+          "episode_length": 22,
+          "timestamp": 1754598017.6432517,
+          "session_time": 11.655091762542725
+        },
+        {
+          "episode": 170,
+          "phase": 1,
+          "reward": -450.18459796239694,
+          "success": false,
+          "success_rate": 0.5,
+          "exploration_noise": 0.27554782791431176,
+          "learning_rate": 0.0029494285467222573,
+          "loss": 0.78770069219172,
+          "episode_length": 68,
+          "timestamp": 1754598020.9290957,
+          "session_time": 14.940935850143433
+        },
+        {
+          "episode": 166,
+          "phase": 1,
+          "reward": 16729.579461842393,
+          "success": true,
+          "success_rate": 0.9,
+          "exploration_noise": 0.2760996131291829,
+          "learning_rate": 0.0029506086131428,
+          "loss": 0.9512346357805654,
+          "episode_length": 8665,
+          "timestamp": 1754598074.4730363,
+          "session_time": 30.14959406852722
         }
       ]
     }

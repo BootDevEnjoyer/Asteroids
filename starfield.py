@@ -1,6 +1,5 @@
 import pygame
 import random
-import math
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
 
 class Star:
@@ -107,11 +106,9 @@ class Starfield:
     
     def add_twinkle_effect(self, screen):
         """add occasional twinkling to random stars"""
-        if random.random() < 0.05:  # 5% chance per frame
-            # select random star from any layer
+        if random.random() < 0.05: 
             layer = random.choice(self.stars)
             if layer:
                 star = random.choice(layer)
-                # render brief bright flash
                 twinkle_color = (255, 255, 255)
                 pygame.draw.circle(screen, twinkle_color, (int(star.x), int(star.y)), star.size + 2, 1) 
