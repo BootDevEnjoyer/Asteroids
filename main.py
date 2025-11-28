@@ -520,9 +520,6 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                     
                     # Training overlay
                     if config.show_metrics:
-                        ctx.session_stats['total_games'] = ai_brain.training_steps
-                        ctx.session_stats['ai_victories'] = len([r for r in ai_brain.success_history if r > 0])
-                        ctx.session_stats['best_reward'] = ai_brain.best_episode_reward
                         draw_auto_training_overlay(screen, font, ctx.session_stats)
                         ctx.ai_display.draw_metrics(screen, ai_brain)
                     
