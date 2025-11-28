@@ -12,7 +12,7 @@ In reinforcement learning, as in broader machine learning, the design of the pro
 
 ## System Overview: What It Does and How It Works
 
-This reinforcement learning system trains a neural network "brain" to control enemy agents in a Pygame-based game. The agent learns to pursue and collide with a player ship by adjusting its turning angle in real-time. Training occurs over episodes (one agent's lifespan, up to 200 steps), with rewards encouraging efficient chases. A global shared brain enables multi-agent learning, and progressive phases introduce increasing difficulty for curriculum learning.
+This reinforcement learning system trains a neural network "brain" to control enemy agents in a Pygame-based game. The agent learns to pursue and collide with a player ship by adjusting its turning angle in real-time. Training occurs over episodes with phase-dependent step limits (Phase 1: 800 steps, Phase 2: 500 steps, Phase 3: 300 steps), with rewards encouraging efficient chases. A global shared brain enables multi-agent learning, and progressive phases introduce increasing difficulty for curriculum learning.
 
 ### Core Reinforcement Learning Components
 
@@ -40,8 +40,10 @@ This reinforcement learning system trains a neural network "brain" to control en
 
 4. **Curriculum Learning via Phases**:
    - Progressive difficulty: Phase 1 (stationary target), Phase 2 (slow-moving), Phase 3 (complex patterns).
+   - Phase-dependent spawn distances: Phase 1 (100-200px), Phase 2 (150-300px), Phase 3 (200-400px).
+   - Phase-dependent episode limits: Phase 1 (800 steps), Phase 2 (500 steps), Phase 3 (300 steps).
    - Advance when success rate exceeds thresholds (such as 70% plus 3 consecutive successes in Phase 1) over 30+ episodes.
-   - **How it works:** Phases modify the environment (such as target speed), resetting some parameters (such as boosting noise) for adaptation. This mitigates local optima, a common reinforcement learning challenge.
+   - **How it works:** Phases modify the environment (target speed, spawn distance, time pressure), resetting some parameters (such as boosting noise) for adaptation. This mitigates local optima, a common reinforcement learning challenge.
 
 5. **Training Loop**:
    - Collect episode data (states, actions, rewards, values).

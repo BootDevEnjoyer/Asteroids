@@ -116,6 +116,12 @@ class MenuScreen:
                 "CLASSIC_PLAY",
                 (100, 150, 255),
             ),
+            (
+                "Reset AI Model",
+                "Archive current model and start fresh training",
+                "RESET_AI",
+                (255, 100, 100),
+            ),
         ]
 
         for i, (text, subtitle, state, border_color) in enumerate(button_defs):

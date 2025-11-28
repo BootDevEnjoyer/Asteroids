@@ -7,7 +7,7 @@ from enum import Enum, auto
 from dataclasses import dataclass
 from typing import Optional
 from asteroids.core.constants import *
-from asteroids.ai.brain import save_global_brain, get_global_brain
+from asteroids.ai.brain import save_global_brain, get_global_brain, reset_global_brain
 from asteroids.ai.debug_rl import debug_episode_end, debug_dump
 from asteroids.ui.menu import MenuScreen
 from asteroids.core.game_context import GameContext, create_game_context, reset_game_context
@@ -264,7 +264,12 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                 # Handle menu button clicks
                 selected = menu.handle_event(event)
                 if selected:
-                    next_state = GameState[selected]
+                    if selected == "RESET_AI":
+                        # Archive and reset AI model without changing state
+                        ai_brain, archived = reset_global_brain()
+                        print(f"AI model reset complete. Ready for fresh training!")
+                    else:
+                        next_state = GameState[selected]
             
             elif current_state == GameState.GAME_OVER:
                 if event.type == pygame.KEYDOWN:
@@ -441,6 +446,7 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                                 enemy.brain.store_reward(500.0)
                                 debug_episode_end(enemy.enemy_id, enemy.episode_reward, True, enemy.episode_length)
                                 enemy.brain.end_episode(enemy.episode_reward, success=True)
+                                enemy.episode_ended = True
                                 ctx.session_stats['best_reward'] = max(ctx.session_stats['best_reward'], enemy.episode_reward)
                                 save_global_brain()
                                 debug_dump()

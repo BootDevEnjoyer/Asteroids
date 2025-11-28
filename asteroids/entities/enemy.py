@@ -251,6 +251,7 @@ class NeuralEnemy(CircleShape):
         
         self.last_distance_to_player = 0
         self.active = True
+        self.episode_ended = False
         
         print(f"Neural AI Enemy #{self.enemy_id} spawned - Phase {self.brain.training_phase} learning")
     
@@ -260,6 +261,11 @@ class NeuralEnemy(CircleShape):
         if player:
             self.last_distance_to_player = (self.position - player.position).length()
             self.episode_start_distance = self.last_distance_to_player
+            # initialize angle facing toward player for coherent initial state
+            direction_to_player = player.position - self.position
+            if direction_to_player.length() > 0:
+                self.current_angle = math.atan2(direction_to_player.y, direction_to_player.x)
+                self.target_angle = self.current_angle
     
     def set_game_groups(self, asteroid_group, enemy_group):
         # store game object references for state collection
@@ -398,7 +404,14 @@ class NeuralEnemy(CircleShape):
         episode_done = False
         
         if self.training_mode:
-            if self.episode_length >= 200:
+            # phase-dependent episode length limits
+            # Phase 1: stationary target, generous time to learn basics
+            # Phase 2: moving target, medium time
+            # Phase 3: advanced patterns, tighter time pressure
+            phase_step_limits = {1: 800, 2: 500, 3: 300}
+            max_steps = phase_step_limits.get(self.brain.training_phase, 400)
+            
+            if self.episode_length >= max_steps:
                 episode_done = True
             
             elif current_distance > 600:
@@ -429,7 +442,18 @@ class NeuralEnemy(CircleShape):
             return
         
         angle = random.uniform(0, 2 * math.pi)
-        distance = random.uniform(200, 400)
+        
+        # phase-dependent spawn distance
+        # Phase 1: closer spawns to learn pursuit basics
+        # Phase 2: medium distance for moving targets
+        # Phase 3: full difficulty with original distances
+        phase_distances = {
+            1: (100, 200),
+            2: (150, 300),
+            3: (200, 400)
+        }
+        min_dist, max_dist = phase_distances.get(self.brain.training_phase, (200, 400))
+        distance = random.uniform(min_dist, max_dist)
         
         spawn_pos = self.player_target.position + pygame.Vector2(
             math.cos(angle) * distance,
@@ -444,9 +468,14 @@ class NeuralEnemy(CircleShape):
         self.last_distance_to_player = (self.position - self.player_target.position).length()
         self.episode_start_distance = self.last_distance_to_player
         
-        # reset movement state
-        self.current_angle = random.uniform(0, 2 * math.pi)
+        # initialize angle facing toward player for coherent state-action alignment
+        direction_to_player = self.player_target.position - self.position
+        if direction_to_player.length() > 0:
+            self.current_angle = math.atan2(direction_to_player.y, direction_to_player.x)
         self.target_angle = self.current_angle
+        
+        # reset episode tracking for new episode
+        self.episode_ended = False
     
     def draw(self, screen):
         # render AI enemy with neural network visualizations
@@ -517,9 +546,12 @@ class NeuralEnemy(CircleShape):
     
     def kill(self):
         # handle enemy destruction during training
-        final_penalty = -20.0
-        self.brain.store_reward(final_penalty)
-        self.brain.end_episode(self.episode_reward + final_penalty, success=False)
+        # only end episode if not already ended (prevents double-counting on game reset)
+        if not self.episode_ended:
+            final_penalty = -20.0
+            self.brain.store_reward(final_penalty)
+            self.brain.end_episode(self.episode_reward + final_penalty, success=False)
+            self.episode_ended = True
         super().kill()
 
 class EnemySpawner:

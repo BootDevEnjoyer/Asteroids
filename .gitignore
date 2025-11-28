@@ -8,3 +8,9 @@ logs/*.json
 
 debug/*.json
 !debug/.gitkeep
+
+# AI model files
+models/*.pth
+
+# Archived training sessions
+archive/

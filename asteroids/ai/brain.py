@@ -26,6 +26,54 @@ def save_global_brain():
     if _global_brain is not None:
         _global_brain.save_model()
 
+def reset_global_brain():
+    """archive existing model/logs and create fresh brain instance"""
+    global _global_brain
+    import shutil
+    from datetime import datetime
+    
+    # create archive directory
+    archive_dir = "archive"
+    os.makedirs(archive_dir, exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    archived_files = []
+    
+    # archive model files
+    model_files = [
+        "models/ai_enemy_brain.pth",
+        "models/ai_enemy_brain_backup.pth"
+    ]
+    for model_file in model_files:
+        if os.path.exists(model_file):
+            base_name = os.path.basename(model_file).replace(".pth", "")
+            archive_path = os.path.join(archive_dir, f"{base_name}_{timestamp}.pth")
+            shutil.move(model_file, archive_path)
+            archived_files.append(archive_path)
+    
+    # archive debug log
+    debug_file = "debug/rl_debug.json"
+    if os.path.exists(debug_file):
+        archive_path = os.path.join(archive_dir, f"rl_debug_{timestamp}.json")
+        shutil.move(debug_file, archive_path)
+        archived_files.append(archive_path)
+    
+    # archive training log
+    log_file = "logs/training_log.json"
+    if os.path.exists(log_file):
+        archive_path = os.path.join(archive_dir, f"training_log_{timestamp}.json")
+        shutil.move(log_file, archive_path)
+        archived_files.append(archive_path)
+    
+    # reset global brain instance
+    _global_brain = EnemyBrain()
+    
+    print(f"AI Brain reset! Archived {len(archived_files)} files to {archive_dir}/")
+    for f in archived_files:
+        print(f"  - {f}")
+    
+    return _global_brain, archived_files
+
 class TrainingLogger:
     """logs training progress to files for analysis"""
     def __init__(self):
