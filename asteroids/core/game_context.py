@@ -111,8 +111,8 @@ def create_game_context(
     # Create player at screen center
     player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
 
-    # Create field spawners
-    asteroid_field = AsteroidField()
+    # Create field spawners (disable asteroids during AI training)
+    asteroid_field = AsteroidField(enabled=not training_mode)
     enemy_spawner = EnemySpawner(enemy_group, enemy_type=enemy_type, training_mode=training_mode)
 
     # Create visual components

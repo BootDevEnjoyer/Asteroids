@@ -2,17 +2,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import pygame
-import random
 import math
-import numpy as np
 import os
 import json
 import time
-from collections import deque, namedtuple
+from collections import deque
 from asteroids.core.constants import *
-
-# experience tuple for replay buffer storage
-Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
 
 # global shared brain instance for all AI enemies
 _global_brain = None

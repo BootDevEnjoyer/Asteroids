@@ -5,3 +5,6 @@ __pycache__/
 
 logs/*.json
 !logs/.gitkeep
+
+debug/*.json
+!debug/.gitkeep

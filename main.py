@@ -7,13 +7,8 @@ from enum import Enum, auto
 from dataclasses import dataclass
 from typing import Optional
 from asteroids.core.constants import *
-from asteroids.entities.player import Player
-from asteroids.entities.asteroid import Asteroid
-from asteroids.entities.asteroidfield import AsteroidField
-from asteroids.entities.shot import Shot
-from asteroids.entities.enemy import Enemy, ShooterEnemy, NeuralEnemy, EnemyShot, EnemySpawner
-from asteroids.ui.starfield import Starfield
-from asteroids.ai.brain import AIMetricsDisplay, save_global_brain, get_global_brain
+from asteroids.ai.brain import save_global_brain, get_global_brain
+from asteroids.ai.debug_rl import debug_episode_end, debug_dump
 from asteroids.ui.menu import MenuScreen
 from asteroids.core.game_context import GameContext, create_game_context, reset_game_context
 
@@ -253,6 +248,7 @@ def main(auto_training=False, training_speed=1.0, headless=False):
             if event.type == pygame.QUIT:
                 print("Saving AI brain before exit...")
                 save_global_brain()
+                debug_dump()
                 if ctx:
                     ctx.session_stats['model_saves'] += 1
                     print(f"Training session complete!")
@@ -275,6 +271,7 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                     if event.key == pygame.K_ESCAPE:
                         print("Saving AI brain before exit...")
                         save_global_brain()
+                        debug_dump()
                         running = False
                         break
                     elif event.key == pygame.K_y and ctx:
@@ -442,9 +439,11 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                             if hasattr(enemy, 'brain'):
                                 enemy.episode_reward += 500.0
                                 enemy.brain.store_reward(500.0)
+                                debug_episode_end(enemy.enemy_id, enemy.episode_reward, True, enemy.episode_length)
                                 enemy.brain.end_episode(enemy.episode_reward, success=True)
                                 ctx.session_stats['best_reward'] = max(ctx.session_stats['best_reward'], enemy.episode_reward)
                                 save_global_brain()
+                                debug_dump()
                                 ctx.session_stats['model_saves'] += 1
                                 print(f"AI Enemy caught player! Final reward: {enemy.episode_reward:.1f}")
                             print("Game over! Enemy caught you!")
@@ -545,9 +544,9 @@ if __name__ == "__main__":
     args = parse_arguments()
     
     # validate and constrain arguments
-    if args.speed < 0.1 or args.speed > 10.0:
-        print("Warning: Training speed should be between 0.1 and 10.0")
-        args.speed = max(0.1, min(10.0, args.speed))
+    if args.speed < 0.1 or args.speed > 20.0:
+        print("Warning: Training speed should be between 0.1 and 20.0")
+        args.speed = max(0.1, min(20.0, args.speed))
     
     if args.headless:
         args.auto_train = True  # headless mode requires auto-training

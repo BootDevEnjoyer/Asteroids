@@ -3,9 +3,9 @@
 import pygame
 import math
 import random
-import torch
 from asteroids.core.circleshape import CircleShape
 from asteroids.core.constants import *
+from asteroids.ai.debug_rl import debug_step, debug_episode_end, debug_print
 
 class EnemyShot(CircleShape):
     def __init__(self, x, y, direction):
@@ -392,6 +392,9 @@ class NeuralEnemy(CircleShape):
         
         # episode management in training mode
         current_distance = (self.position - self.player_target.position).length()
+        
+        # RL debug logging
+        debug_step(self.enemy_id, [], angle_adjustment.item(), reward, current_distance)
         episode_done = False
         
         if self.training_mode:
@@ -403,6 +406,7 @@ class NeuralEnemy(CircleShape):
                 episode_done = True
             
             if episode_done:
+                debug_episode_end(self.enemy_id, self.episode_reward, False, self.episode_length)
                 self.brain.end_episode(self.episode_reward, success=False)
                 
                 if self.brain.should_advance_phase():
@@ -417,6 +421,7 @@ class NeuralEnemy(CircleShape):
             print(f"[AI] Enemy #{self.enemy_id}: Phase {self.brain.training_phase}, Episode {self.brain.training_steps}")
             print(f"   Success: {self.brain.get_success_rate():.1%}, Distance: {current_distance:.0f}px")
             print(f"   Angle: {math.degrees(self.current_angle):.0f}°, Target: {math.degrees(self.target_angle):.0f}°")
+            debug_print()
     
     def respawn_near_player(self):
         # relocate enemy near player for training episodes
@@ -546,9 +551,12 @@ class EnemySpawner:
         if self.enemy_type == "none":
             return
         
+        # limit to 1 enemy during training to prevent buffer corruption
+        max_enemies = 1 if self.training_mode else ENEMY_MAX_COUNT
+        
         # spawn enemy when conditions met
         if (self.spawn_timer >= ENEMY_SPAWN_RATE and 
-            len(self.enemy_group) < ENEMY_MAX_COUNT):
+            len(self.enemy_group) < max_enemies):
             self.spawn_enemy(player, asteroid_group)
             self.spawn_timer = 0
     
