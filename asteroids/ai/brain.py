@@ -95,8 +95,8 @@ class EnemyBrain(nn.Module):
         )
         
         # optimizers with learning rate for stable convergence
-        self.policy_optimizer = optim.Adam(self.policy_network.parameters(), lr=0.002)
-        self.value_optimizer = optim.Adam(self.value_network.parameters(), lr=0.002)
+        self.policy_optimizer = optim.Adam(self.policy_network.parameters(), lr=0.003)
+        self.value_optimizer = optim.Adam(self.value_network.parameters(), lr=0.003)
         
         # episode storage for policy gradient calculation
         self.episode_states = []
