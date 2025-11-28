@@ -517,13 +517,31 @@ class NeuralEnemy(CircleShape):
         super().kill()
 
 class EnemySpawner:
-    """Manages enemy spawning and lifecycle"""
-    def __init__(self, enemy_group):
+    """Manages enemy spawning and lifecycle."""
+    
+    def __init__(self, enemy_group, enemy_type: str = "neural"):
+        """
+        Initialize the enemy spawner.
+        
+        Args:
+            enemy_group: Sprite group for spawned enemies
+            enemy_type: Type of enemies to spawn
+                - "neural": AI-controlled neural network enemies
+                - "shooter": Enemies that shoot at player
+                - "follower": Enemies that chase the player
+                - "mixed": Random mix of shooter and follower
+                - "none": No enemies spawned
+        """
         self.spawn_timer = 0
         self.enemy_group = enemy_group
+        self.enemy_type = enemy_type
         
     def update(self, dt, player, asteroid_group=None):
         self.spawn_timer += dt
+        
+        # skip spawning if enemy type is none
+        if self.enemy_type == "none":
+            return
         
         # spawn enemy when conditions met
         if (self.spawn_timer >= ENEMY_SPAWN_RATE and 
@@ -532,8 +550,11 @@ class EnemySpawner:
             self.spawn_timer = 0
     
     def spawn_enemy(self, player, asteroid_group=None):
-        # create new enemy at screen edge
-        enemy_type = "neural"
+        # determine actual enemy type to spawn
+        if self.enemy_type == "mixed":
+            enemy_type = random.choice(["follower", "shooter"])
+        else:
+            enemy_type = self.enemy_type
         
         # select spawn edge
         edge = random.randint(0, 3)

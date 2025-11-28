@@ -3,6 +3,9 @@ import math
 import time
 import argparse
 import random
+from enum import Enum, auto
+from dataclasses import dataclass
+from typing import Optional
 from constants import *
 from player import *
 from asteroid import *
@@ -10,10 +13,81 @@ from asteroidfield import *
 from starfield import *
 from enemy import *
 from ai_brain import AIMetricsDisplay, save_global_brain, get_global_brain
+from menu import MenuScreen
+from game_context import GameContext, create_game_context, reset_game_context
+
+
+class GameState(Enum):
+    """Defines the distinct states the game can be in."""
+    MENU = auto()
+    RL_TRAINING = auto()
+    RL_SHOWCASE = auto()
+    CLASSIC_PLAY = auto()
+    GAME_OVER = auto()
+
+
+@dataclass
+class GameConfig:
+    """Configuration for a specific game mode, derived from GameState."""
+    enemy_type: str
+    training_enabled: bool
+    player_controlled: bool
+    auto_restart: bool
+    show_metrics: bool
+    speed_multiplier: float
+
+    @classmethod
+    def for_state(cls, state: GameState, speed: float = 1.0) -> "GameConfig":
+        """Factory method to create config matching a game state."""
+        configs = {
+            GameState.MENU: cls(
+                enemy_type="none",
+                training_enabled=False,
+                player_controlled=True,
+                auto_restart=False,
+                show_metrics=False,
+                speed_multiplier=1.0
+            ),
+            GameState.RL_TRAINING: cls(
+                enemy_type="neural",
+                training_enabled=True,
+                player_controlled=False,
+                auto_restart=True,
+                show_metrics=True,
+                speed_multiplier=speed
+            ),
+            GameState.RL_SHOWCASE: cls(
+                enemy_type="neural",
+                training_enabled=False,
+                player_controlled=False,
+                auto_restart=False,
+                show_metrics=True,
+                speed_multiplier=1.0
+            ),
+            GameState.CLASSIC_PLAY: cls(
+                enemy_type="mixed",
+                training_enabled=False,
+                player_controlled=True,
+                auto_restart=False,
+                show_metrics=False,
+                speed_multiplier=1.0
+            ),
+            GameState.GAME_OVER: cls(
+                enemy_type="none",
+                training_enabled=False,
+                player_controlled=False,
+                auto_restart=False,
+                show_metrics=False,
+                speed_multiplier=1.0
+            ),
+        }
+        return configs[state]
+
 
 current_training_mode = False
 
-def draw_game_over_screen(screen, font, score):
+def draw_game_over_screen(screen, font, score, show_menu_option=True):
+    """Render the game over screen with options."""
     screen.fill("black")
     
     game_over_font = pygame.font.Font(None, 72)
@@ -31,10 +105,20 @@ def draw_game_over_screen(screen, font, score):
     restart_rect = restart_text.get_rect()
     restart_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 40)
     
-    exit_font = pygame.font.Font(None, 36)
-    exit_text = exit_font.render("Press ESC to Exit", True, "white")
+    option_font = pygame.font.Font(None, 36)
+    
+    if show_menu_option:
+        menu_text = option_font.render("Press M for Menu", True, "cyan")
+        menu_rect = menu_text.get_rect()
+        menu_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80)
+        screen.blit(menu_text, menu_rect)
+        y_offset = 120
+    else:
+        y_offset = 80
+    
+    exit_text = option_font.render("Press ESC to Exit", True, "white")
     exit_rect = exit_text.get_rect()
-    exit_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80)
+    exit_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + y_offset)
     
     screen.blit(game_over_text, game_over_rect)
     screen.blit(score_text, score_rect)
@@ -118,372 +202,362 @@ def reset_game():
     return updatable, drawable, asteroid_group, shot_group, enemy_group, enemy_shot_group, player, asteroid_field, enemy_spawner
 
 def main(auto_training=False, training_speed=1.0, headless=False):
+    global current_training_mode
     pygame.init()
-
-    session_stats = {
-        'start_time': time.time(),
-        'total_games': 0,
-        'ai_victories': 0,
-        'model_saves': 0,
-        'auto_restarts': 0,
-        'best_reward': 0.0,
-        'last_save_time': time.time()
-    }
-
-    font = pygame.font.Font(None, 36)
-    score = 0
-    game_over = False
-
-    training_mode = auto_training
-    current_training_mode = training_mode
-    training_time = 0.0   # track time for player movement patterns
-    auto_restart_timer = 0.0  # timer for automatic restart after game over
-    
-    updatable, drawable, asteroid_group, shot_group, enemy_group, enemy_shot_group, player, asteroid_field, enemy_spawner = reset_game()
-
-    starfield = Starfield(num_layers=3, stars_per_layer=75)
-
-    ai_display = AIMetricsDisplay()
 
     clock = pygame.time.Clock()
     dt = 0
+    font = pygame.font.Font(None, 36)
     
-    # create screen unless headless mode
+    # Create screen
     if not headless:
         screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("Asteroids - AI Training Mode" if auto_training else "Asteroids")
+        pygame.display.set_caption("Asteroids")
     else:
-        # create minimal surface for headless mode
         screen = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-    print("Starting Asteroids AI Training!")
-    print(f"Auto Training: {auto_training}")
-    print(f"Training Speed: {training_speed}x")
-    print(f"Headless Mode: {headless}")
-    print(f"Screen width: {SCREEN_WIDTH}")
-    print(f"Screen height: {SCREEN_HEIGHT}")
-
-    # get AI brain reference and pass session stats
+    # Determine initial state based on CLI arguments
+    if headless or auto_training:
+        # CLI mode: skip menu, go directly to training
+        current_state = GameState.RL_TRAINING
+        print("Starting Asteroids AI Training!")
+        print(f"Auto Training: {auto_training}")
+        print(f"Training Speed: {training_speed}x")
+        print(f"Headless Mode: {headless}")
+    else:
+        # Interactive mode: start with menu
+        current_state = GameState.MENU
+        print("Starting Asteroids - Use menu to select mode")
+    
+    print(f"Screen: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
+    
+    # Create config for current state
+    config = GameConfig.for_state(current_state, training_speed)
+    
+    # Initialize menu (always created for potential return-to-menu)
+    menu = MenuScreen()
+    
+    # Game context (created when entering a game state)
+    ctx: Optional[GameContext] = None
+    
+    # Previous state for tracking transitions
+    previous_state: Optional[GameState] = None
+    
+    # Track the last game mode for restart functionality
+    last_game_mode: GameState = GameState.RL_TRAINING
+    
+    # Get AI brain reference
     ai_brain = get_global_brain()
-    ai_brain.set_session_stats(session_stats)  # connect the brain to the session stats
-    
-    # initialize session stats from AI brain data for immediate display
-    session_stats['total_games'] = ai_brain.training_steps
-    session_stats['ai_victories'] = len([r for r in ai_brain.success_history if r > 0])
-    session_stats['best_reward'] = ai_brain.best_episode_reward
-    
     print(f"AI Brain loaded - Phase: {ai_brain.training_phase}, Episodes: {ai_brain.training_steps}")
 
-    while True:
+    running = True
+    while running:
+        # Handle state transitions
+        if current_state != previous_state:
+            previous_state = current_state
+            config = GameConfig.for_state(current_state, training_speed)
+            
+            # Create game context when entering a game state
+            if current_state in (GameState.RL_TRAINING, GameState.RL_SHOWCASE, GameState.CLASSIC_PLAY):
+                ctx = create_game_context(enemy_type=config.enemy_type)
+                ai_brain.set_session_stats(ctx.session_stats)
+                current_training_mode = not config.player_controlled
+                last_game_mode = current_state
+                
+                # Set window title based on state
+                if not headless:
+                    titles = {
+                        GameState.RL_TRAINING: "Asteroids - AI Training Mode",
+                        GameState.RL_SHOWCASE: "Asteroids - AI Showcase",
+                        GameState.CLASSIC_PLAY: "Asteroids - Classic Mode",
+                    }
+                    pygame.display.set_caption(titles.get(current_state, "Asteroids"))
+                
+                print(f"Entered {current_state.name} mode")
+        
+        # Process events
+        next_state: Optional[GameState] = None
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 print("Saving AI brain before exit...")
                 save_global_brain()
-                session_stats['model_saves'] += 1
-                print(f"Training session complete!")
-                print(f"Total games: {session_stats['total_games']}")
-                print(f"AI victories: {session_stats['ai_victories']} ({session_stats['ai_victories']/max(1,session_stats['total_games']):.1%})")
-                return
-            if event.type == pygame.KEYDOWN and not auto_training:
-                if event.key == pygame.K_t and not game_over:
-                    training_mode = not training_mode
-                    current_training_mode = training_mode
-                    mode_text = "Training Mode" if training_mode else "Normal Mode"
-                    print(f"Switched to {mode_text}")
-            if game_over and event.type == pygame.KEYDOWN and not auto_training:
-                if event.key == pygame.K_ESCAPE:
-                    print("Saving AI brain before exit...")
-                    save_global_brain()
-                    session_stats['model_saves'] += 1
-                    return
-                elif event.key == pygame.K_y:
-                    print("Restarting game!")
-                    game_over = False
-                    score = 0
-                    training_time = 0.0
-                    auto_restart_timer = 0.0
-                    session_stats['total_games'] += 1
-                    session_stats['auto_restarts'] += 1
-                    updatable, drawable, asteroid_group, shot_group, enemy_group, enemy_shot_group, player, asteroid_field, enemy_spawner = reset_game()
-                    starfield = Starfield(num_layers=3, stars_per_layer=75)
-        
-        # automatic restart after 2-second delay
-        if auto_training and game_over:
-            auto_restart_timer += dt
-            if auto_restart_timer >= 2.0:
-                print(f"Auto-restart #{session_stats['auto_restarts'] + 1}")
-                game_over = False
-                score = 0
-                training_time = 0.0
-                auto_restart_timer = 0.0
-                session_stats['auto_restarts'] += 1
-                
-                # stats already updated when game ended, avoid double-counting
-                print(f"Game ended. Stats: {session_stats['ai_victories']}/{session_stats['total_games']} AI victories")
-                
-                updatable, drawable, asteroid_group, shot_group, enemy_group, enemy_shot_group, player, asteroid_field, enemy_spawner = reset_game()
-                starfield = Starfield(num_layers=3, stars_per_layer=75)
-        
-        if not game_over:
-            screen.fill("black")
+                if ctx:
+                    ctx.session_stats['model_saves'] += 1
+                    print(f"Training session complete!")
+                    print(f"Total games: {ctx.session_stats['total_games']}")
+                running = False
+                break
             
-            # render starfield background (skip in headless mode)
-            if not headless:
-                starfield.update(dt, player.velocity if hasattr(player, 'velocity') else None)
-                starfield.draw(screen)
-                starfield.add_twinkle_effect(screen)
-
-            # training mode: control player movement based on AI training phase
-            if training_mode:
-                training_time += dt
-                
-                # get current AI training phase from any neural enemy
-                current_phase = 1
-                for enemy in enemy_group:
-                    if hasattr(enemy, 'brain'):
-                        current_phase = enemy.brain.training_phase
-                        break
-                
-                # override player controls based on training phase
-                if current_phase == 1:
-                    # phase 1: stationary player in center
-                    center_x, center_y = SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2
-                    player.position = pygame.Vector2(center_x, center_y)
-                    player.velocity = pygame.Vector2(0, 0)
-                    
-                elif current_phase == 2:
-                    # phase 2: slow circular movement
-                    center_x, center_y = SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2
-                    radius = 100
-                    speed = 0.8 * training_speed  # apply training speed multiplier
-                    
-                    angle = training_time * speed
-                    player.position = pygame.Vector2(
-                        center_x + math.cos(angle) * radius,
-                        center_y + math.sin(angle) * radius
-                    )
-                    # set velocity to match movement for AI state
-                    player.velocity = pygame.Vector2(
-                        -math.sin(angle) * radius * speed,
-                        math.cos(angle) * radius * speed
-                    )
-                    
-                elif current_phase == 3:
-                    # phase 3: random movement patterns for advanced training
-                    center_x, center_y = SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2
-                    
-                    # more complex movement patterns
-                    pattern = int(training_time / 10) % 4  # change pattern every 10 seconds
-                    
-                    if pattern == 0:
-                        # figure-8 pattern
-                        t = training_time * training_speed
-                        scale = 150
-                        player.position = pygame.Vector2(
-                            center_x + math.sin(t) * scale,
-                            center_y + math.sin(t * 2) * scale * 0.5
-                        )
-                    elif pattern == 1:
-                        # spiral pattern
-                        t = training_time * training_speed * 0.5
-                        radius = 50 + (t * 10) % 100
-                        player.position = pygame.Vector2(
-                            center_x + math.cos(t * 2) * radius,
-                            center_y + math.sin(t * 2) * radius
-                        )
-                    elif pattern == 2:
-                        # random walk with bounds
-                        if not hasattr(player, 'random_target') or player.random_target is None:
-                            player.random_target = pygame.Vector2(center_x, center_y)
-                        
-                        # move toward random target
-                        direction = player.random_target - player.position
-                        if direction.length() < 20 or random.random() < 0.01:
-                            # pick new random target
-                            player.random_target = pygame.Vector2(
-                                random.uniform(100, SCREEN_WIDTH - 100),
-                                random.uniform(100, SCREEN_HEIGHT - 100)
-                            )
-                        
-                        if direction.length() > 0:
-                            direction = direction.normalize()
-                            player.velocity = direction * 100 * training_speed
-                            player.position += player.velocity * dt
-                    else:
-                        # bouncing pattern with wall collision
-                        if not hasattr(player, 'bounce_velocity') or player.bounce_velocity is None:
-                            player.bounce_velocity = pygame.Vector2(100, 80) * training_speed
-                        
-                        player.position += player.bounce_velocity * dt
-                        
-                        # reverse velocity when hitting screen boundaries
-                        if player.position.x < 50 or player.position.x > SCREEN_WIDTH - 50:
-                            player.bounce_velocity.x *= -1
-                        if player.position.y < 50 or player.position.y > SCREEN_HEIGHT - 50:
-                            player.bounce_velocity.y *= -1
-                        
-                        player.velocity = player.bounce_velocity
-                    
-            enemy_spawner.update(dt * training_speed, player, asteroid_group)
-            
-            # selective updating: skip player movement in training phases 1-2
-            if training_mode and current_phase < 3:
-                for obj in updatable:
-                    if obj != player:
-                        obj.update(dt * training_speed)
-            else:
-                updatable.update(dt * training_speed)
-            
-            # collision detection: asteroids vs player
-            for asteroid in asteroid_group:
-                if player.check_collision(asteroid):
-                    print("Game over! Hit asteroid")
-                    game_over = True
-                    player.killed_by_ai = False  # player death, not AI victory
-                    
-                    # update session stats immediately for live display
-                    if auto_training:
-                        session_stats['total_games'] += 1
-                        print(f"Live Update - Game #{session_stats['total_games']} (Player hit asteroid)")
+            # State-specific event handling
+            if current_state == GameState.MENU:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    running = False
                     break
-
-                for shot in shot_group:
-                    if shot.check_collision(asteroid):
-                        shot.kill()
-
-                        if asteroid.radius <= ASTEROID_MIN_RADIUS:
-                            score += 2
-                        else:
-                            score += 1
-                        asteroid.split()
+                # Handle menu button clicks
+                selected = menu.handle_event(event)
+                if selected:
+                    next_state = GameState[selected]
             
-            # collision detection: enemies vs player
-            if not game_over:
-                for enemy in enemy_group:
-                    if player.check_collision(enemy):
-                        # disable all AI enemies to prevent multiple collision processing
-                        for ai_enemy in enemy_group:
-                            if hasattr(ai_enemy, 'active'):
-                                ai_enemy.active = False
-                        
-                        # reward AI for successful player capture
-                        if hasattr(enemy, 'brain'):
-                            enemy.episode_reward += 500.0  # massive success reward
-                            enemy.brain.store_reward(500.0)
-                            enemy.brain.end_episode(enemy.episode_reward, success=True)
-                            
-                            session_stats['best_reward'] = max(session_stats['best_reward'], enemy.episode_reward)
-                            
-                            save_global_brain()
-                            session_stats['model_saves'] += 1
-                            print(f"AI Enemy caught player! Final reward: {enemy.episode_reward:.1f}")
-                            print("Global AI brain saved after successful hunt!")
-                        
-                        print("Game over! Enemy caught you!")
-                        game_over = True
-                        player.killed_by_ai = True  # mark as AI victory
-                        
-                        # update session stats immediately for live display
-                        if auto_training:
-                            session_stats['total_games'] += 1
-                            session_stats['ai_victories'] += 1
-                            print(f"Live Update - AI Victory! Total: {session_stats['ai_victories']}/{session_stats['total_games']}")
+            elif current_state == GameState.GAME_OVER:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        print("Saving AI brain before exit...")
+                        save_global_brain()
+                        running = False
                         break
-                        
-                    # player shots vs enemies
-                    for shot in shot_group:
-                        if shot.check_collision(enemy):
-                            shot.kill()
-                            enemy.kill()
-                            score += 5
-                            break
+                    elif event.key == pygame.K_y and ctx:
+                        # Restart current game mode
+                        ctx = reset_game_context(ctx)
+                        ctx.game_over = False
+                        ctx.session_stats['auto_restarts'] += 1
+                        next_state = last_game_mode
+                        print("Restarting game!")
+                    elif event.key == pygame.K_m:
+                        next_state = GameState.MENU
+                        ctx = None
             
-            # collision detection: enemy shots vs player
-            if not game_over:
-                for enemy_shot in enemy_shot_group:
-                    if player.check_collision(enemy_shot):
-                        print("Game over! Hit by enemy shot!")
-                        game_over = True
-                        player.killed_by_ai = True  # mark as AI victory
-                        enemy_shot.kill()
-                        
-                        # update session stats immediately for live display
-                        if auto_training:
-                            session_stats['total_games'] += 1
-                            session_stats['ai_victories'] += 1
-                            print(f"Live Update - AI Victory! Total: {session_stats['ai_victories']}/{session_stats['total_games']}")
-                        break
+            elif current_state in (GameState.RL_TRAINING, GameState.RL_SHOWCASE, GameState.CLASSIC_PLAY):
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        next_state = GameState.MENU
+                        print("Returning to menu...")
+        
+        if not running:
+            break
+        
+        # Apply state transition
+        if next_state:
+            current_state = next_state
+            continue
+        
+        # State-specific update and render
+        if current_state == GameState.MENU:
+            menu.update(dt)
+            if not headless:
+                menu.draw(screen)
+                pygame.display.flip()
+        
+        elif current_state == GameState.GAME_OVER:
+            # Check if the game mode we came from had auto_restart enabled
+            game_mode_config = GameConfig.for_state(last_game_mode, training_speed)
             
-            # periodic auto-save during long training sessions
-            if auto_training and time.time() - session_stats['last_save_time'] > 300:
-                print("Periodic auto-save...")
-                save_global_brain()
-                session_stats['model_saves'] += 1
-                session_stats['last_save_time'] = time.time()
+            if game_mode_config.auto_restart and ctx:
+                ctx.auto_restart_timer += dt
+                if ctx.auto_restart_timer >= 2.0:
+                    print(f"Auto-restart #{ctx.session_stats['auto_restarts'] + 1}")
+                    ctx = reset_game_context(ctx)
+                    ctx.session_stats['auto_restarts'] += 1
+                    # Return to the game state we came from
+                    current_state = last_game_mode
+                    continue
+            
+            if not headless and ctx:
+                draw_game_over_screen(screen, font, ctx.score, show_menu_option=not game_mode_config.auto_restart)
+        
+        elif current_state in (GameState.RL_TRAINING, GameState.RL_SHOWCASE, GameState.CLASSIC_PLAY) and ctx:
+            # Active gameplay update
+            if not ctx.game_over:
+                screen.fill("black")
                 
-            if not game_over and not headless:
-                for sprite in drawable:
-                    sprite.draw(screen)
-
-                score_text = font.render(f"Score: {score}", True, "white")
-                score_rect = score_text.get_rect()
-                score_rect.centerx = SCREEN_WIDTH // 2
-                score_rect.y = 20
-                screen.blit(score_text, score_rect)
+                # Render starfield
+                if not headless:
+                    ctx.starfield.update(dt, ctx.player.velocity if hasattr(ctx.player, 'velocity') else None)
+                    ctx.starfield.draw(screen)
+                    ctx.starfield.add_twinkle_effect(screen)
                 
-                # training mode status display
-                if training_mode:
+                # Training mode: control player movement based on AI training phase
+                if not config.player_controlled:
+                    ctx.training_time += dt
+                    
                     current_phase = 1
-                    for enemy in enemy_group:
+                    for enemy in ctx.enemy_group:
                         if hasattr(enemy, 'brain'):
                             current_phase = enemy.brain.training_phase
                             break
                     
-                    phase_names = {1: "Stationary Target", 2: "Slow Moving Target", 3: "Advanced Patterns"}
-                    phase_name = phase_names.get(current_phase, "Unknown")
-                    
-                    training_text = font.render(f"TRAINING MODE - Phase {current_phase}: {phase_name}", True, "yellow")
-                    training_rect = training_text.get_rect()
-                    training_rect.centerx = SCREEN_WIDTH // 2
-                    training_rect.y = 60
-                    screen.blit(training_text, training_rect)
-                    
-                    if not auto_training:
-                        instruction_font = pygame.font.Font(None, 24)
-                        instruction_text = instruction_font.render("Press 'T' to toggle Training Mode", True, "gray")
-                        instruction_rect = instruction_text.get_rect()
-                        instruction_rect.centerx = SCREEN_WIDTH // 2
-                        instruction_rect.y = 90
-                        screen.blit(instruction_text, instruction_rect)
+                    # Override player controls based on training phase
+                    if current_phase == 1:
+                        center_x, center_y = SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2
+                        ctx.player.position = pygame.Vector2(center_x, center_y)
+                        ctx.player.velocity = pygame.Vector2(0, 0)
+                    elif current_phase == 2:
+                        center_x, center_y = SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2
+                        radius = 100
+                        speed = 0.8 * config.speed_multiplier
+                        angle = ctx.training_time * speed
+                        ctx.player.position = pygame.Vector2(
+                            center_x + math.cos(angle) * radius,
+                            center_y + math.sin(angle) * radius
+                        )
+                        ctx.player.velocity = pygame.Vector2(
+                            -math.sin(angle) * radius * speed,
+                            math.cos(angle) * radius * speed
+                        )
+                    elif current_phase == 3:
+                        center_x, center_y = SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2
+                        pattern = int(ctx.training_time / 10) % 4
+                        
+                        if pattern == 0:
+                            t = ctx.training_time * config.speed_multiplier
+                            scale = 150
+                            ctx.player.position = pygame.Vector2(
+                                center_x + math.sin(t) * scale,
+                                center_y + math.sin(t * 2) * scale * 0.5
+                            )
+                        elif pattern == 1:
+                            t = ctx.training_time * config.speed_multiplier * 0.5
+                            radius = 50 + (t * 10) % 100
+                            ctx.player.position = pygame.Vector2(
+                                center_x + math.cos(t * 2) * radius,
+                                center_y + math.sin(t * 2) * radius
+                            )
+                        elif pattern == 2:
+                            if not hasattr(ctx.player, 'random_target') or ctx.player.random_target is None:
+                                ctx.player.random_target = pygame.Vector2(center_x, center_y)
+                            direction = ctx.player.random_target - ctx.player.position
+                            if direction.length() < 20 or random.random() < 0.01:
+                                ctx.player.random_target = pygame.Vector2(
+                                    random.uniform(100, SCREEN_WIDTH - 100),
+                                    random.uniform(100, SCREEN_HEIGHT - 100)
+                                )
+                            if direction.length() > 0:
+                                direction = direction.normalize()
+                                ctx.player.velocity = direction * 100 * config.speed_multiplier
+                                ctx.player.position += ctx.player.velocity * dt
+                        else:
+                            if not hasattr(ctx.player, 'bounce_velocity') or ctx.player.bounce_velocity is None:
+                                ctx.player.bounce_velocity = pygame.Vector2(100, 80) * config.speed_multiplier
+                            ctx.player.position += ctx.player.bounce_velocity * dt
+                            if ctx.player.position.x < 50 or ctx.player.position.x > SCREEN_WIDTH - 50:
+                                ctx.player.bounce_velocity.x *= -1
+                            if ctx.player.position.y < 50 or ctx.player.position.y > SCREEN_HEIGHT - 50:
+                                ctx.player.bounce_velocity.y *= -1
+                            ctx.player.velocity = ctx.player.bounce_velocity
+                
+                effective_dt = dt * config.speed_multiplier
+                ctx.enemy_spawner.update(effective_dt, ctx.player, ctx.asteroid_group)
+                
+                # Selective updating based on training phase
+                if not config.player_controlled and current_phase < 3:
+                    for obj in ctx.updatable:
+                        if obj != ctx.player:
+                            obj.update(effective_dt)
                 else:
-                    mode_text = font.render("NORMAL MODE", True, "white")
-                    mode_rect = mode_text.get_rect()
-                    mode_rect.centerx = SCREEN_WIDTH // 2
-                    mode_rect.y = 60
-                    screen.blit(mode_text, mode_rect)
+                    ctx.updatable.update(effective_dt)
                 
-                # live training statistics overlay
-                if auto_training:
-                    # sync with AI brain for real-time updates
-                    session_stats['total_games'] = ai_brain.training_steps
-                    session_stats['ai_victories'] = len([r for r in ai_brain.success_history if r > 0])
-                    session_stats['best_reward'] = ai_brain.best_episode_reward
+                # Collision detection: asteroids vs player
+                for asteroid in ctx.asteroid_group:
+                    if ctx.player.check_collision(asteroid):
+                        print("Game over! Hit asteroid")
+                        ctx.game_over = True
+                        ctx.player.killed_by_ai = False
+                        if config.auto_restart:
+                            ctx.session_stats['total_games'] += 1
+                        break
+                    for shot in ctx.shot_group:
+                        if shot.check_collision(asteroid):
+                            shot.kill()
+                            ctx.score += 2 if asteroid.radius <= ASTEROID_MIN_RADIUS else 1
+                            asteroid.split()
+                
+                # Collision detection: enemies vs player
+                if not ctx.game_over:
+                    for enemy in ctx.enemy_group:
+                        if ctx.player.check_collision(enemy):
+                            for ai_enemy in ctx.enemy_group:
+                                if hasattr(ai_enemy, 'active'):
+                                    ai_enemy.active = False
+                            if hasattr(enemy, 'brain'):
+                                enemy.episode_reward += 500.0
+                                enemy.brain.store_reward(500.0)
+                                enemy.brain.end_episode(enemy.episode_reward, success=True)
+                                ctx.session_stats['best_reward'] = max(ctx.session_stats['best_reward'], enemy.episode_reward)
+                                save_global_brain()
+                                ctx.session_stats['model_saves'] += 1
+                                print(f"AI Enemy caught player! Final reward: {enemy.episode_reward:.1f}")
+                            print("Game over! Enemy caught you!")
+                            ctx.game_over = True
+                            ctx.player.killed_by_ai = True
+                            if config.auto_restart:
+                                ctx.session_stats['total_games'] += 1
+                                ctx.session_stats['ai_victories'] += 1
+                            break
+                        for shot in ctx.shot_group:
+                            if shot.check_collision(enemy):
+                                shot.kill()
+                                enemy.kill()
+                                ctx.score += 5
+                                break
+                
+                # Collision detection: enemy shots vs player
+                if not ctx.game_over:
+                    for enemy_shot in ctx.enemy_shot_group:
+                        if ctx.player.check_collision(enemy_shot):
+                            print("Game over! Hit by enemy shot!")
+                            ctx.game_over = True
+                            ctx.player.killed_by_ai = True
+                            enemy_shot.kill()
+                            if config.auto_restart:
+                                ctx.session_stats['total_games'] += 1
+                                ctx.session_stats['ai_victories'] += 1
+                            break
+                
+                # Periodic auto-save
+                if config.training_enabled and time.time() - ctx.session_stats['last_save_time'] > 300:
+                    print("Periodic auto-save...")
+                    save_global_brain()
+                    ctx.session_stats['model_saves'] += 1
+                    ctx.session_stats['last_save_time'] = time.time()
+                
+                # Render game
+                if not ctx.game_over and not headless:
+                    for sprite in ctx.drawable:
+                        sprite.draw(screen)
                     
-                    draw_auto_training_overlay(screen, font, session_stats)
-                
-                # always show AI metrics from global brain
-                ai_brain = get_global_brain()
-                if ai_brain:
-                    ai_display.draw_metrics(screen, ai_brain)
-
-                pygame.display.flip()
-        else:
-            # show game over screen only in manual mode
-            if not auto_training and not headless:
-                draw_game_over_screen(screen, font, score)
-
-        target_fps = int(60 * training_speed)
-        dt = clock.tick(target_fps)/1000
+                    score_text = font.render(f"Score: {ctx.score}", True, "white")
+                    score_rect = score_text.get_rect()
+                    score_rect.centerx = SCREEN_WIDTH // 2
+                    score_rect.y = 20
+                    screen.blit(score_text, score_rect)
+                    
+                    # Mode status display
+                    if not config.player_controlled:
+                        current_phase = 1
+                        for enemy in ctx.enemy_group:
+                            if hasattr(enemy, 'brain'):
+                                current_phase = enemy.brain.training_phase
+                                break
+                        phase_names = {1: "Stationary Target", 2: "Slow Moving Target", 3: "Advanced Patterns"}
+                        phase_name = phase_names.get(current_phase, "Unknown")
+                        training_text = font.render(f"TRAINING MODE - Phase {current_phase}: {phase_name}", True, "yellow")
+                        training_rect = training_text.get_rect()
+                        training_rect.centerx = SCREEN_WIDTH // 2
+                        training_rect.y = 60
+                        screen.blit(training_text, training_rect)
+                    else:
+                        mode_text = font.render("CLASSIC MODE - Press ESC for menu", True, "white")
+                        mode_rect = mode_text.get_rect()
+                        mode_rect.centerx = SCREEN_WIDTH // 2
+                        mode_rect.y = 60
+                        screen.blit(mode_text, mode_rect)
+                    
+                    # Training overlay
+                    if config.show_metrics:
+                        ctx.session_stats['total_games'] = ai_brain.training_steps
+                        ctx.session_stats['ai_victories'] = len([r for r in ai_brain.success_history if r > 0])
+                        ctx.session_stats['best_reward'] = ai_brain.best_episode_reward
+                        draw_auto_training_overlay(screen, font, ctx.session_stats)
+                        ctx.ai_display.draw_metrics(screen, ai_brain)
+                    
+                    pygame.display.flip()
+            else:
+                # Game over - transition to GAME_OVER state
+                current_state = GameState.GAME_OVER
+                continue
+        
+        target_fps = int(60 * config.speed_multiplier)
+        dt = clock.tick(target_fps) / 1000
 
 def parse_arguments():
     """parse command line arguments for different training modes"""
