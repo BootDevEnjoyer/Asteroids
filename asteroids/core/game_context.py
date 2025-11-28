@@ -57,6 +57,7 @@ class GameContext:
     training_time: float = 0.0
     auto_restart_timer: float = 0.0
     game_over: bool = False
+    training_mode: bool = False
 
 
 def create_sprite_groups() -> tuple:
@@ -89,7 +90,8 @@ def create_sprite_groups() -> tuple:
 
 def create_game_context(
     enemy_type: str = "neural",
-    preserve_session_stats: Optional[Dict[str, Any]] = None
+    preserve_session_stats: Optional[Dict[str, Any]] = None,
+    training_mode: bool = False
 ) -> GameContext:
     """
     Create a new game context with fresh game objects.
@@ -97,6 +99,7 @@ def create_game_context(
     Args:
         enemy_type: Type of enemies to spawn ("neural", "mixed", "none")
         preserve_session_stats: Optional existing stats to preserve across restarts
+        training_mode: Whether AI-controlled training behaviors are active
         
     Returns:
         Fully initialized GameContext
@@ -110,7 +113,7 @@ def create_game_context(
 
     # Create field spawners
     asteroid_field = AsteroidField()
-    enemy_spawner = EnemySpawner(enemy_group, enemy_type=enemy_type)
+    enemy_spawner = EnemySpawner(enemy_group, enemy_type=enemy_type, training_mode=training_mode)
 
     # Create visual components
     starfield = Starfield(num_layers=3, stars_per_layer=75)
@@ -144,6 +147,7 @@ def create_game_context(
         training_time=0.0,
         auto_restart_timer=0.0,
         game_over=False,
+        training_mode=training_mode,
     )
 
 
@@ -163,6 +167,7 @@ def reset_game_context(ctx: GameContext, enemy_type: Optional[str] = None) -> Ga
     
     return create_game_context(
         enemy_type=actual_enemy_type,
-        preserve_session_stats=ctx.session_stats
+        preserve_session_stats=ctx.session_stats,
+        training_mode=ctx.training_mode,
     )
 

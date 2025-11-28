@@ -85,8 +85,6 @@ class GameConfig:
         return configs[state]
 
 
-current_training_mode = False
-
 def draw_game_over_screen(screen, font, score, show_menu_option=True):
     """Render the game over screen with options."""
     screen.fill("black")
@@ -175,35 +173,7 @@ def draw_auto_training_overlay(screen, font, session_stats):
         screen.blit(text, (panel_x + 15, y_offset))
         y_offset += 22
 
-def reset_game():
-    """reset all game state for a fresh start"""
-    updatable = pygame.sprite.Group()
-    drawable = pygame.sprite.Group()
-    asteroid_group = pygame.sprite.Group()
-    shot_group = pygame.sprite.Group()
-    enemy_group = pygame.sprite.Group()
-    enemy_shot_group = pygame.sprite.Group()
-    
-    # reassign containers to new sprite groups
-    Player.containers = (updatable, drawable) # type: ignore
-    Asteroid.containers = (updatable, drawable, asteroid_group) # type: ignore
-    AsteroidField.containers = (updatable) # type: ignore
-    Shot.containers = (updatable, drawable, shot_group) # type: ignore
-    Enemy.containers = (updatable, drawable, enemy_group) # type: ignore
-    ShooterEnemy.containers = (updatable, drawable, enemy_group) # type: ignore
-    NeuralEnemy.containers = (updatable, drawable, enemy_group) # type: ignore
-    EnemyShot.containers = (updatable, drawable, enemy_shot_group) # type: ignore
-    
-    x = SCREEN_WIDTH / 2
-    y = SCREEN_HEIGHT / 2
-    player = Player(x, y)
-    asteroid_field = AsteroidField()
-    enemy_spawner = EnemySpawner(enemy_group)
-    
-    return updatable, drawable, asteroid_group, shot_group, enemy_group, enemy_shot_group, player, asteroid_field, enemy_spawner
-
 def main(auto_training=False, training_speed=1.0, headless=False):
-    global current_training_mode
     pygame.init()
 
     clock = pygame.time.Clock()
@@ -260,9 +230,9 @@ def main(auto_training=False, training_speed=1.0, headless=False):
             
             # Create game context when entering a game state
             if current_state in (GameState.RL_TRAINING, GameState.RL_SHOWCASE, GameState.CLASSIC_PLAY):
-                ctx = create_game_context(enemy_type=config.enemy_type)
+                training_mode = not config.player_controlled
+                ctx = create_game_context(enemy_type=config.enemy_type, training_mode=training_mode)
                 ai_brain.set_session_stats(ctx.session_stats)
-                current_training_mode = not config.player_controlled
                 last_game_mode = current_state
                 
                 # Set window title based on state

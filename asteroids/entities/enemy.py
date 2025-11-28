@@ -91,7 +91,7 @@ class Enemy(CircleShape):
                 
                 try:
                     pygame.draw.line(screen, trail_color, current_point, next_point, 2)
-                except:
+                except (TypeError, ValueError):
                     pass
         
         # render enemy with pulsing animation
@@ -217,8 +217,11 @@ class ShooterEnemy(CircleShape):
 
 class NeuralEnemy(CircleShape):
     """AI-controlled enemy using neural network learning"""
-    def __init__(self, x, y):
+    def __init__(self, x, y, training_mode: bool = False):
         super().__init__(x, y, ENEMY_RADIUS)
+        
+        # training mode controls episode management and respawn behavior
+        self.training_mode = training_mode
         
         # initialize neural network components
         from asteroids.ai.brain import get_global_brain, GameStateCollector
@@ -320,8 +323,6 @@ class NeuralEnemy(CircleShape):
     
     def update(self, dt):
         # neural network controlled movement update
-        import main
-        
         self.pulse_timer += dt
         self.ai_glow_intensity = (math.sin(self.pulse_timer * 4) + 1) * 0.5
         
@@ -377,7 +378,7 @@ class NeuralEnemy(CircleShape):
         if (self.position.x < -50 or self.position.x > SCREEN_WIDTH + 50 or
             self.position.y < -50 or self.position.y > SCREEN_HEIGHT + 50):
             
-            if hasattr(main, 'current_training_mode') and main.current_training_mode:
+            if self.training_mode:
                 self.respawn_near_player()
                 return
             else:
@@ -393,7 +394,7 @@ class NeuralEnemy(CircleShape):
         current_distance = (self.position - self.player_target.position).length()
         episode_done = False
         
-        if hasattr(main, 'current_training_mode') and main.current_training_mode:
+        if self.training_mode:
             if self.episode_length >= 200:
                 episode_done = True
             
@@ -413,7 +414,7 @@ class NeuralEnemy(CircleShape):
         
         # training progress output
         if self.brain.training_steps % 50 == 0 and self.episode_length == 1:
-            print(f"🤖 AI #{self.enemy_id}: Phase {self.brain.training_phase}, Episode {self.brain.training_steps}")
+            print(f"[AI] Enemy #{self.enemy_id}: Phase {self.brain.training_phase}, Episode {self.brain.training_steps}")
             print(f"   Success: {self.brain.get_success_rate():.1%}, Distance: {current_distance:.0f}px")
             print(f"   Angle: {math.degrees(self.current_angle):.0f}°, Target: {math.degrees(self.target_angle):.0f}°")
     
@@ -519,7 +520,7 @@ class NeuralEnemy(CircleShape):
 class EnemySpawner:
     """Manages enemy spawning and lifecycle."""
     
-    def __init__(self, enemy_group, enemy_type: str = "neural"):
+    def __init__(self, enemy_group, enemy_type: str = "neural", training_mode: bool = False):
         """
         Initialize the enemy spawner.
         
@@ -531,10 +532,12 @@ class EnemySpawner:
                 - "follower": Enemies that chase the player
                 - "mixed": Random mix of shooter and follower
                 - "none": No enemies spawned
+            training_mode: Whether AI-controlled training behaviors are active
         """
         self.spawn_timer = 0
         self.enemy_group = enemy_group
         self.enemy_type = enemy_type
+        self.training_mode = training_mode
         
     def update(self, dt, player, asteroid_group=None):
         self.spawn_timer += dt
@@ -580,7 +583,7 @@ class EnemySpawner:
                 y = random.uniform(SCREEN_HEIGHT * 0.2, SCREEN_HEIGHT * 0.8)
                 initial_velocity = pygame.Vector2(1, 0)
             
-            enemy = NeuralEnemy(x, y)
+            enemy = NeuralEnemy(x, y, training_mode=self.training_mode)
             enemy.set_target(player)
             
             # set initial center-directed velocity

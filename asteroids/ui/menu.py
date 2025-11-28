@@ -9,6 +9,18 @@ from asteroids.ui.starfield import Starfield
 class Button:
     """Clickable button with hover effects."""
 
+    # Class-level font cache (shared across all buttons)
+    _font: Optional[pygame.font.Font] = None
+    _subtitle_font: Optional[pygame.font.Font] = None
+
+    @classmethod
+    def _get_fonts(cls) -> Tuple[pygame.font.Font, pygame.font.Font]:
+        """Lazily initialize and return cached fonts."""
+        if cls._font is None:
+            cls._font = pygame.font.Font(None, 36)
+            cls._subtitle_font = pygame.font.Font(None, 24)
+        return cls._font, cls._subtitle_font
+
     def __init__(
         self,
         rect: pygame.Rect,
@@ -42,7 +54,7 @@ class Button:
         )
 
         # Main text
-        font = pygame.font.Font(None, 36)
+        font, subtitle_font = self._get_fonts()
         text_surface = font.render(self.text, True, (255, 255, 255))
         text_rect = text_surface.get_rect()
         text_rect.centerx = self.rect.centerx
@@ -51,7 +63,6 @@ class Button:
 
         # Subtitle text
         if self.subtitle:
-            subtitle_font = pygame.font.Font(None, 24)
             subtitle_color = (180, 180, 200) if not self.is_hovered else (220, 220, 240)
             subtitle_surface = subtitle_font.render(self.subtitle, True, subtitle_color)
             subtitle_rect = subtitle_surface.get_rect()
@@ -71,6 +82,11 @@ class MenuScreen:
         self.starfield = Starfield(num_layers=3, stars_per_layer=100)
         self.buttons: List[Tuple[Button, str]] = []
         self._create_buttons()
+        
+        # Cache fonts for title and footer rendering
+        self._title_font = pygame.font.Font(None, 72)
+        self._subtitle_font = pygame.font.Font(None, 32)
+        self._footer_font = pygame.font.Font(None, 24)
 
     def _create_buttons(self) -> None:
         """Initialize menu buttons with their target states."""
@@ -153,16 +169,14 @@ class MenuScreen:
     def _draw_title(self, screen: pygame.Surface) -> None:
         """Render the game title and subtitle."""
         # Main title
-        title_font = pygame.font.Font(None, 72)
-        title_text = title_font.render("ASTEROIDS", True, (255, 255, 255))
+        title_text = self._title_font.render("ASTEROIDS", True, (255, 255, 255))
         title_rect = title_text.get_rect()
         title_rect.centerx = SCREEN_WIDTH // 2
         title_rect.y = 80
         screen.blit(title_text, title_rect)
 
         # Subtitle
-        subtitle_font = pygame.font.Font(None, 32)
-        subtitle_text = subtitle_font.render(
+        subtitle_text = self._subtitle_font.render(
             "Neural Network AI Demonstration", True, (150, 180, 255)
         )
         subtitle_rect = subtitle_text.get_rect()
@@ -179,8 +193,7 @@ class MenuScreen:
 
     def _draw_footer(self, screen: pygame.Surface) -> None:
         """Render footer instructions."""
-        footer_font = pygame.font.Font(None, 24)
-        footer_text = footer_font.render("Press ESC to exit", True, (100, 100, 120))
+        footer_text = self._footer_font.render("Press ESC to exit", True, (100, 100, 120))
         footer_rect = footer_text.get_rect()
         footer_rect.centerx = SCREEN_WIDTH // 2
         footer_rect.y = SCREEN_HEIGHT - 50

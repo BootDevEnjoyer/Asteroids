@@ -36,6 +36,7 @@ class TrainingLogger:
     def __init__(self):
         self.log_file = "logs/training_log.json"
         self.session_start = time.time()
+        os.makedirs("logs", exist_ok=True)
         
     def log_episode(self, episode_data):
         """log episode data to file"""
@@ -387,6 +388,9 @@ class EnemyBrain(nn.Module):
         """save trained model and training state to disk"""
         save_path = path or self.model_path
         
+        # ensure models directory exists
+        os.makedirs(os.path.dirname(save_path) or "models", exist_ok=True)
+        
         try:
             # create backup of existing model
             if os.path.exists(self.model_path) and save_path == self.model_path:
@@ -469,7 +473,7 @@ class EnemyBrain(nn.Module):
                 for param_group in self.value_optimizer.param_groups:
                     param_group['lr'] = self.current_lr
                 
-                print(f"✅ AI brain successfully loaded!")
+                print(f"[OK] AI brain successfully loaded!")
                 summary = self.get_training_summary()
                 print(f"   Phase {summary['training_phase']}, Episodes: {summary['total_episodes']}")
                 print(f"   Success: {summary['success_rate']:.1%}, Training: {summary['training_hours']:.1f}h")
@@ -477,7 +481,7 @@ class EnemyBrain(nn.Module):
                 print(f"   Exploration: {self.exploration_noise:.3f}, LR: {self.current_lr:.6f}")
                 print(f"=== END LOAD ===")
             except Exception as e:
-                print(f"❌ Failed to load AI brain: {e}")
+                print(f"[ERROR] Failed to load AI brain: {e}")
                 print("Starting with fresh neural network with enhanced features")
                 # attempt to load backup
                 if os.path.exists(self.backup_path):
@@ -493,13 +497,13 @@ class EnemyBrain(nn.Module):
                             # load essential data only
                             self.policy_network.load_state_dict(checkpoint['policy_network_state_dict'])
                             self.value_network.load_state_dict(checkpoint['value_network_state_dict'])
-                            print("✅ Backup loaded successfully!")
+                            print("[OK] Backup loaded successfully!")
                         else:
-                            print("❌ Backup also has architecture mismatch, starting fresh")
-                    except:
-                        print("❌ Backup also failed, starting fresh with enhanced model")
+                            print("[ERROR] Backup also has architecture mismatch, starting fresh")
+                    except Exception:
+                        print("[ERROR] Backup also failed, starting fresh with enhanced model")
         else:
-            print(f"🆕 No saved AI brain found at {self.model_path}")
+            print(f"[NEW] No saved AI brain found at {self.model_path}")
             print("Starting with fresh neural network with enhanced features")
 
 
