@@ -6,15 +6,16 @@ import random
 from enum import Enum, auto
 from dataclasses import dataclass
 from typing import Optional
-from constants import *
-from player import *
-from asteroid import *
-from asteroidfield import *
-from starfield import *
-from enemy import *
-from ai_brain import AIMetricsDisplay, save_global_brain, get_global_brain
-from menu import MenuScreen
-from game_context import GameContext, create_game_context, reset_game_context
+from asteroids.core.constants import *
+from asteroids.entities.player import Player
+from asteroids.entities.asteroid import Asteroid
+from asteroids.entities.asteroidfield import AsteroidField
+from asteroids.entities.shot import Shot
+from asteroids.entities.enemy import Enemy, ShooterEnemy, NeuralEnemy, EnemyShot, EnemySpawner
+from asteroids.ui.starfield import Starfield
+from asteroids.ai.brain import AIMetricsDisplay, save_global_brain, get_global_brain
+from asteroids.ui.menu import MenuScreen
+from asteroids.core.game_context import GameContext, create_game_context, reset_game_context
 
 
 class GameState(Enum):

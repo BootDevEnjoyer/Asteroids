@@ -9,7 +9,7 @@ import os
 import json
 import time
 from collections import deque, namedtuple
-from constants import *
+from asteroids.core.constants import *
 
 # experience tuple for replay buffer storage
 Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
@@ -34,7 +34,7 @@ def save_global_brain():
 class TrainingLogger:
     """logs training progress to files for analysis"""
     def __init__(self):
-        self.log_file = "training_log.json"
+        self.log_file = "logs/training_log.json"
         self.session_start = time.time()
         
     def log_episode(self, episode_data):
@@ -142,8 +142,8 @@ class EnemyBrain(nn.Module):
         self.min_lr = 0.0001
         
         # model persistence paths
-        self.model_path = "ai_enemy_brain.pth"
-        self.backup_path = "ai_enemy_brain_backup.pth"
+        self.model_path = "models/ai_enemy_brain.pth"
+        self.backup_path = "models/ai_enemy_brain_backup.pth"
         self.training_logger = TrainingLogger()
         
         # reference to session stats for updating display

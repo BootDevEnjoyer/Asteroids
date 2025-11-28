@@ -1,8 +1,9 @@
-from circleshape import *
-from constants import *
-from shot import *
 import random
 import math
+import pygame
+from asteroids.core.circleshape import CircleShape
+from asteroids.core.constants import *
+from asteroids.entities.shot import Shot
 
 class ThrustParticle:
     """individual particle for engine thrust visual effect"""

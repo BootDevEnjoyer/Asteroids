@@ -1,7 +1,8 @@
 """Shot projectile with bouncing mechanics and visual feedback."""
 
-from circleshape import *
-from constants import *
+import pygame
+from asteroids.core.circleshape import CircleShape
+from asteroids.core.constants import *
 
 class Shot(CircleShape):
     def __init__(self, x, y, velocity):

@@ -1,6 +1,6 @@
 import pygame
 import random
-from constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from asteroids.core.constants import SCREEN_WIDTH, SCREEN_HEIGHT
 
 class Star:
     """individual star with position, speed, and visual properties"""

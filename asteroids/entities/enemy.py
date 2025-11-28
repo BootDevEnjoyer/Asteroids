@@ -3,9 +3,9 @@
 import pygame
 import math
 import random
-from circleshape import CircleShape
-from constants import *
 import torch
+from asteroids.core.circleshape import CircleShape
+from asteroids.core.constants import *
 
 class EnemyShot(CircleShape):
     def __init__(self, x, y, direction):
@@ -221,7 +221,7 @@ class NeuralEnemy(CircleShape):
         super().__init__(x, y, ENEMY_RADIUS)
         
         # initialize neural network components
-        from ai_brain import get_global_brain, GameStateCollector
+        from asteroids.ai.brain import get_global_brain, GameStateCollector
         self.brain = get_global_brain()
         self.state_collector = GameStateCollector()
         

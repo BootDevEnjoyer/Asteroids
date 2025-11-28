@@ -1,7 +1,7 @@
 """Base classes for circular game objects with collision detection."""
 
 import pygame
-from constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from asteroids.core.constants import SCREEN_WIDTH, SCREEN_HEIGHT
 
 class CircleShape(pygame.sprite.Sprite):
     # base class for circular game objects

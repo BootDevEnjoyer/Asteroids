@@ -2,8 +2,8 @@
 
 import pygame
 from typing import Optional, List, Tuple
-from constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from starfield import Starfield
+from asteroids.core.constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from asteroids.ui.starfield import Starfield
 
 
 class Button:

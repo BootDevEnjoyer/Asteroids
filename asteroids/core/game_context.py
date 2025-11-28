@@ -5,14 +5,14 @@ import pygame
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional
 
-from constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from player import Player
-from asteroid import Asteroid
-from asteroidfield import AsteroidField
-from shot import Shot
-from enemy import Enemy, ShooterEnemy, NeuralEnemy, EnemyShot, EnemySpawner
-from starfield import Starfield
-from ai_brain import AIMetricsDisplay, get_global_brain
+from asteroids.core.constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from asteroids.entities.player import Player
+from asteroids.entities.asteroid import Asteroid
+from asteroids.entities.asteroidfield import AsteroidField
+from asteroids.entities.shot import Shot
+from asteroids.entities.enemy import Enemy, ShooterEnemy, NeuralEnemy, EnemyShot, EnemySpawner
+from asteroids.ui.starfield import Starfield
+from asteroids.ai.brain import AIMetricsDisplay, get_global_brain
 
 
 def _default_session_stats() -> Dict[str, Any]:

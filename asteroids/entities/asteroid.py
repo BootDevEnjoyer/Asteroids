@@ -1,10 +1,10 @@
 """Asteroid game objects with irregular shapes and collision physics."""
 
-from circleshape import *
-from constants import *
 import random
 import pygame
 import math
+from asteroids.core.circleshape import CircleShape
+from asteroids.core.constants import *
 
 class Asteroid(CircleShape):
     # irregular asteroid with jagged shape and bouncing physics
