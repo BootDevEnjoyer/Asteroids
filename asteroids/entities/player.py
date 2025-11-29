@@ -186,7 +186,7 @@ class Player(CircleShape):
         else:
             self.energy = min(self.max_energy, self.energy + PLAYER_ENERGY_REGEN_RATE * dt)
         
-        if self.energy > 0.0 and self.energy_starved:
+        if self.energy_starved and self.energy >= PLAYER_ENERGY_PER_SHOT:
             self.energy_starved = False
 
     def shoot(self, dt):

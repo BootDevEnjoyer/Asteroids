@@ -183,7 +183,7 @@ def draw_energy_bar(screen, hud_font, player):
     base_background = pygame.Color(15, 20, 35)
     flash_color = pygame.Color(90, 20, 20)
 
-    flash_active = player.energy <= 0.01
+    flash_active = player.energy <= 0.01 or getattr(player, "energy_starved", False)
     if flash_active:
         pulse = (math.sin(pygame.time.get_ticks() / 160) + 1) * 0.5
         bg_color = base_background.lerp(flash_color, 0.4 + 0.6 * pulse)
