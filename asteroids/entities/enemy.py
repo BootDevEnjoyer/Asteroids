@@ -217,6 +217,7 @@ class NeuralEnemy(CircleShape):
         self.last_distance_to_player = 0
         self.active = True
         self.episode_ended = False
+        self.initial_approach = True  # Skip distance check during approach from spawn
 
         print(f"Neural AI Enemy #{self.enemy_id} spawned - Phase {self.brain.training_phase} learning")
     
@@ -349,8 +350,14 @@ class NeuralEnemy(CircleShape):
             if self.episode_length >= max_steps:
                 episode_done = True
             elif current_distance > 600:
-                self.respawn_near_player()
-                episode_done = True
+                # Skip distance check during initial approach from spawn point
+                if not self.initial_approach:
+                    self.respawn_near_player()
+                    episode_done = True
+
+            # Mark initial approach complete once enemy gets reasonably close
+            if self.initial_approach and current_distance < 400:
+                self.initial_approach = False
 
             if episode_done:
                 debug_episode_end(self.enemy_id, self.episode_reward, False, self.episode_length)
@@ -399,6 +406,7 @@ class NeuralEnemy(CircleShape):
         self.target_angle = self.current_angle
 
         self.episode_ended = False
+        self.initial_approach = False  # Respawns are close to player, no approach needed
     
     def draw(self, screen):
         pulse = math.sin(self.pulse_timer * 3) * 0.2 + 1.0

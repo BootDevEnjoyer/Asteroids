@@ -364,22 +364,14 @@ class EnemyBrain(nn.Module):
         """determine if AI should advance to next training phase based on performance"""
         if self.episodes_in_current_phase < 30:
             return False
-            
-        # phase advancement thresholds based on success rate and consistency
-        phase_thresholds = {
-            1: {'success_rate': 0.7, 'min_consecutive': 3},
-            2: {'success_rate': 0.6, 'min_consecutive': 5}, 
-            3: {'success_rate': 0.5, 'min_consecutive': 3}
-        }
         
-        threshold = phase_thresholds.get(self.training_phase, {'success_rate': 0.5, 'min_consecutive': 3})
-        
-        return (self.phase_success_rate >= threshold['success_rate'] and 
-                self.consecutive_successes >= threshold['min_consecutive'])
+        # Advance when success rate exceeds 70%
+        return self.get_success_rate() > 0.7
     
     def advance_phase(self):
         """advance to next training phase with increased difficulty"""
         if self.training_phase < 3:
+            prev_success_rate = self.get_success_rate()
             self.training_phase += 1
             self.phase_episode_count = 0
             self.episodes_in_current_phase = 0
@@ -389,8 +381,8 @@ class EnemyBrain(nn.Module):
             # increase exploration when advancing phases
             self.exploration_noise = min(0.2, self.exploration_noise * 1.5)
             
-            print(f"🎓 AI Advanced to Training Phase {self.training_phase}!")
-            print(f"   Success rate in previous phase: {self.phase_success_rate:.1%}")
+            print(f"AI Advanced to Training Phase {self.training_phase}!")
+            print(f"   Success rate in previous phase: {prev_success_rate:.1%}")
             print(f"   Phase advancements so far: {self.phase_advancement_count}")
             
             # save milestone checkpoint

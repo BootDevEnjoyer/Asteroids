@@ -5,7 +5,9 @@ A classic Asteroids game featuring neural network enemies that learn to hunt the
 ---
 
 > **Note:** This is a personal learning project exploring reinforcement learning in games.
-> During AI training modes, the player ship follows predetermined patterns while the neural network enemies learn pursuit behaviors. The AI is training to catch *you* - not the other way around!
+
+It is based upon the boot.dev Asteroids project and extended further.
+> During AI training modes, the player ship follows predetermined patterns while the neural network enemies learn pursuit behaviors.
 
 ---
 
