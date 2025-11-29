@@ -11,8 +11,7 @@ debug/*.json
 
 # AI model files
 models/*.pth
+models/milestones/*.pth
 
 # Archived training sessions
 archive/
-
-ai_brain_phase_*_milestone.pth

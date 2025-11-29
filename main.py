@@ -11,6 +11,7 @@ from asteroids.ai.brain import save_global_brain, get_global_brain, reset_global
 from asteroids.ai.debug_rl import debug_episode_end, debug_dump
 from asteroids.ui.menu import MenuScreen
 from asteroids.core.game_context import GameContext, create_game_context, reset_game_context
+from asteroids.core.storage_cleanup import cleanup_storage
 
 
 class GameState(Enum):
@@ -163,12 +164,74 @@ def draw_auto_training_overlay(screen, font, session_stats):
         screen.blit(text, (panel_x + 15, y_offset))
         y_offset += 22
 
+def draw_energy_bar(screen, hud_font, player):
+    """Display the player's remaining energy near the bottom-left corner."""
+    if not hasattr(player, "energy") or not hasattr(player, "max_energy"):
+        return
+
+    bar_width = 260
+    bar_height = 20
+    margin_x = 40
+    margin_bottom = 40
+    bar_x = margin_x
+    bar_y = SCREEN_HEIGHT - bar_height - margin_bottom
+
+    ratio = 0 if player.max_energy <= 0 else player.energy / player.max_energy
+    ratio = max(0.0, min(1.0, ratio))
+
+    background_rect = pygame.Rect(bar_x, bar_y, bar_width, bar_height)
+    base_background = pygame.Color(15, 20, 35)
+    flash_color = pygame.Color(90, 20, 20)
+
+    flash_active = player.energy <= 0.01
+    if flash_active:
+        pulse = (math.sin(pygame.time.get_ticks() / 160) + 1) * 0.5
+        bg_color = base_background.lerp(flash_color, 0.4 + 0.6 * pulse)
+    else:
+        bg_color = base_background
+
+    pygame.draw.rect(screen, bg_color, background_rect, border_radius=6)
+
+    inner_rect = background_rect.inflate(-4, -4)
+    fill_width = int(inner_rect.width * ratio)
+    if fill_width > 0:
+        fill_rect = pygame.Rect(inner_rect.x, inner_rect.y, fill_width, inner_rect.height)
+        base_color = pygame.Color(40, 160, 210)
+        highlight_color = pygame.Color(110, 230, 255)
+        blend_color = pygame.Color(
+            int(base_color.r + (highlight_color.r - base_color.r) * ratio),
+            int(base_color.g + (highlight_color.g - base_color.g) * ratio),
+            int(base_color.b + (highlight_color.b - base_color.b) * ratio)
+        )
+        pygame.draw.rect(screen, blend_color, fill_rect, border_radius=4)
+    elif flash_active:
+        flash_rect = pygame.Rect(inner_rect.x, inner_rect.y, inner_rect.width, inner_rect.height)
+        flash_fill = pygame.Color(255, 80, 80)
+        flash_fill.a = 180
+        pygame.draw.rect(screen, flash_fill, flash_rect, border_radius=4)
+
+    border_color = (255, 120, 120) if flash_active else (80, 100, 140)
+    pygame.draw.rect(screen, border_color, background_rect, width=2, border_radius=6)
+
+    label_color = (255, 160, 160) if flash_active else (200, 220, 255)
+    label = hud_font.render("Energy", True, label_color)
+    label_rect = label.get_rect()
+    label_rect.midleft = (bar_x, bar_y - 18)
+    screen.blit(label, label_rect)
+
+    value_color = (255, 180, 180) if flash_active else (230, 240, 255)
+    value_text = hud_font.render(f"{int(player.energy)}/{int(player.max_energy)}", True, value_color)
+    value_rect = value_text.get_rect()
+    value_rect.midleft = (bar_x, bar_y + bar_height + 18)
+    screen.blit(value_text, value_rect)
+
 def main(auto_training=False, training_speed=1.0, headless=False):
     pygame.init()
 
     clock = pygame.time.Clock()
     dt = 0
     font = pygame.font.Font(None, 36)
+    hud_font = pygame.font.Font(None, 24)
 
     if not headless:
         screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -242,6 +305,17 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                     if selected == "RESET_AI":
                         ai_brain, archived = reset_global_brain()
                         print(f"AI model reset complete. Ready for fresh training!")
+                    elif selected == "CLEAN_STORAGE":
+                        cleanup_summary = cleanup_storage()
+                        print(
+                            "Cleanup complete - "
+                            f"{cleanup_summary['archive_deleted']} archive files removed, "
+                            f"{cleanup_summary['milestones_deleted']} milestone files removed."
+                        )
+                        if cleanup_summary["errors"]:
+                            print("Cleanup warnings:")
+                            for err in cleanup_summary["errors"]:
+                                print(f"  - {err}")
                     else:
                         next_state = GameState[selected]
             
@@ -479,6 +553,9 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                         mode_rect.centerx = SCREEN_WIDTH // 2
                         mode_rect.y = 60
                         screen.blit(mode_text, mode_rect)
+
+                    if config.player_controlled:
+                        draw_energy_bar(screen, hud_font, ctx.player)
 
                     if config.show_metrics:
                         draw_auto_training_overlay(screen, font, ctx.session_stats)

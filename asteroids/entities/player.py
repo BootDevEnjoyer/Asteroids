@@ -45,6 +45,11 @@ class Player(CircleShape):
         self.rotation = 0
         self.collision_radius = PLAYER_RADIUS * 0.7
         self.shot_cooldown = 0.0
+        self.max_energy = PLAYER_MAX_ENERGY
+        self.energy = PLAYER_MAX_ENERGY
+        self._regen_delay = PLAYER_ENERGY_REGEN_DELAY
+        self._regen_timer = 0.0
+        self.energy_starved = False
 
         self.thrust_particles = []
         self.is_thrusting = False
@@ -174,15 +179,27 @@ class Player(CircleShape):
         self.update_thrust_particles(dt)
         self.wrap_position()
 
-        self.shot_cooldown -= dt
-        if self.shot_cooldown < 0:
-            self.shot_cooldown = 0.0
+        self.shot_cooldown = max(0.0, self.shot_cooldown - dt)
+
+        if self._regen_timer > 0.0:
+            self._regen_timer = max(0.0, self._regen_timer - dt)
+        else:
+            self.energy = min(self.max_energy, self.energy + PLAYER_ENERGY_REGEN_RATE * dt)
+        
+        if self.energy > 0.0 and self.energy_starved:
+            self.energy_starved = False
 
     def shoot(self, dt):
         if self.shot_cooldown > 0:
+            return
+        if self.energy < PLAYER_ENERGY_PER_SHOT:
+            self.energy_starved = True
             return
 
         shot_velocity = pygame.Vector2(0, 1).rotate(self.rotation) * PLAYER_SHOOT_SPEED
         shot = Shot(self.position.x, self.position.y, shot_velocity) # type: ignore
 
         self.shot_cooldown = PLAYER_SHOOT_COOLDOWN
+        self.energy = max(0.0, self.energy - PLAYER_ENERGY_PER_SHOT)
+        self._regen_timer = self._regen_delay
+        self.energy_starved = self.energy <= 0.0

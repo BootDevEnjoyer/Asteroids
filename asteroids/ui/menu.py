@@ -1,5 +1,6 @@
 """Menu screen and UI components for game state selection."""
 
+import math
 import pygame
 from typing import Optional, List, Tuple
 from asteroids.core.constants import SCREEN_WIDTH, SCREEN_HEIGHT
@@ -30,7 +31,8 @@ class Button:
         hover_color: Tuple[int, int, int] = (60, 60, 120),
         border_color: Tuple[int, int, int] = (100, 150, 255),
     ):
-        self.rect = rect
+        self.base_rect = rect.copy()
+        self.rect = rect.copy()
         self.text = text
         self.subtitle = subtitle
         self.color = color
@@ -71,6 +73,14 @@ class Button:
         """Check if button was clicked."""
         return mouse_pressed and self.rect.collidepoint(mouse_pos)
 
+    def set_dynamic_offset(self, offset: Tuple[float, float]) -> None:
+        """Shift draw and hitbox positions while preserving original layout."""
+        dx, dy = offset
+        self.rect.topleft = (
+            self.base_rect.x + int(round(dx)),
+            self.base_rect.y + int(round(dy)),
+        )
+
 
 class MenuScreen:
     """Main menu screen with game mode selection buttons."""
@@ -78,22 +88,29 @@ class MenuScreen:
     def __init__(self):
         self.starfield = Starfield(num_layers=3, stars_per_layer=100)
         self.buttons: List[Tuple[Button, str]] = []
-        self._create_buttons()
-        
+        self.play_buttons: List[Tuple[Button, str]] = []
+        self.utility_buttons: List[Tuple[Button, str]] = []
+        self._motion_time = 0.0
+        self._play_label_y = 0
+        self._utility_label_y = 0
+        self._group_separator_y = 0
+
         self._title_font = pygame.font.Font(None, 72)
         self._subtitle_font = pygame.font.Font(None, 32)
         self._footer_font = pygame.font.Font(None, 24)
+        self._group_label_font = pygame.font.Font(None, 28)
+
+        self._create_buttons()
 
     def _create_buttons(self) -> None:
         """Initialize menu buttons with their target states."""
-        button_width = 400
-        button_height = 70
-        button_x = (SCREEN_WIDTH - button_width) // 2
-        spacing = 90
-        start_y = SCREEN_HEIGHT // 2 - 40
+        play_button_width = 420
+        play_button_height = 72
+        play_spacing = 95
+        play_start_y = SCREEN_HEIGHT // 2 - 150
+        play_button_x = (SCREEN_WIDTH - play_button_width) // 2
 
-        # Button definitions: (text, subtitle, target_state, border_color)
-        button_defs = [
+        play_defs = [
             (
                 "Watch AI Learn",
                 "See neural networks train in real-time",
@@ -112,23 +129,60 @@ class MenuScreen:
                 "CLASSIC_PLAY",
                 (100, 150, 255),
             ),
+        ]
+
+        for i, (text, subtitle, state, border_color) in enumerate(play_defs):
+            rect = pygame.Rect(
+                play_button_x,
+                play_start_y + i * play_spacing,
+                play_button_width,
+                play_button_height,
+            )
+            button = Button(rect=rect, text=text, subtitle=subtitle, border_color=border_color)
+            self.play_buttons.append((button, state))
+            self.buttons.append((button, state))
+
+        util_button_width = 220
+        util_button_height = 62
+        util_gap = 40
+        util_row_width = util_button_width * 2 + util_gap
+        util_start_x = (SCREEN_WIDTH - util_row_width) // 2
+        util_y = play_start_y + len(play_defs) * play_spacing + 40
+
+        utility_defs = [
             (
                 "Reset AI Model",
-                "Archive current model and start fresh training",
                 "RESET_AI",
                 (255, 100, 100),
             ),
+            (
+                "Clean Up Runs",
+                "CLEAN_STORAGE",
+                (180, 120, 255),
+            ),
         ]
 
-        for i, (text, subtitle, state, border_color) in enumerate(button_defs):
-            rect = pygame.Rect(button_x, start_y + i * spacing, button_width, button_height)
+        for i, (text, state, border_color) in enumerate(utility_defs):
+            rect = pygame.Rect(
+                util_start_x + i * (util_button_width + util_gap),
+                util_y,
+                util_button_width,
+                util_button_height,
+            )
             button = Button(
                 rect=rect,
                 text=text,
-                subtitle=subtitle,
+                subtitle="",
                 border_color=border_color,
+                color=(50, 30, 70),
+                hover_color=(70, 45, 110),
             )
+            self.utility_buttons.append((button, state))
             self.buttons.append((button, state))
+
+        self._play_label_y = play_start_y - 45
+        self._utility_label_y = util_y - 40
+        self._group_separator_y = util_y - 10
 
     def handle_event(self, event: pygame.event.Event) -> Optional[str]:
         """
@@ -147,6 +201,8 @@ class MenuScreen:
     def update(self, dt: float) -> None:
         """Update menu animations and button states."""
         self.starfield.update(dt)
+        self._motion_time += dt
+        self._apply_group_motion()
         mouse_pos = pygame.mouse.get_pos()
         for button, _ in self.buttons:
             button.update(mouse_pos)
@@ -158,6 +214,7 @@ class MenuScreen:
         self.starfield.add_twinkle_effect(screen)
 
         self._draw_title(screen)
+        self._draw_group_labels(screen)
 
         for button, _ in self.buttons:
             button.draw(screen)
@@ -193,4 +250,37 @@ class MenuScreen:
         footer_rect.centerx = SCREEN_WIDTH // 2
         footer_rect.y = SCREEN_HEIGHT - 50
         screen.blit(footer_text, footer_rect)
+
+    def _draw_group_labels(self, screen: pygame.Surface) -> None:
+        """Annotate button groups and add a visual divider."""
+        if not self.play_buttons or not self.utility_buttons:
+            return
+
+        play_label = self._group_label_font.render("Play Modes", True, (160, 190, 255))
+        play_rect = play_label.get_rect()
+        play_rect.centerx = SCREEN_WIDTH // 2
+        play_rect.y = self._play_label_y
+        screen.blit(play_label, play_rect)
+
+        utility_label = self._group_label_font.render("Maintenance", True, (200, 160, 255))
+        utility_rect = utility_label.get_rect()
+        utility_rect.centerx = SCREEN_WIDTH // 2
+        utility_rect.y = self._utility_label_y
+        screen.blit(utility_label, utility_rect)
+
+        line_start = (SCREEN_WIDTH // 2 - 180, self._group_separator_y)
+        line_end = (SCREEN_WIDTH // 2 + 180, self._group_separator_y)
+        pygame.draw.line(screen, (70, 70, 110), line_start, line_end, 1)
+
+    def _apply_group_motion(self) -> None:
+        """Apply gentle motion offsets to button groups for subtle parallax."""
+        play_vertical = math.sin(self._motion_time * 0.6) * 6
+        play_horizontal = math.sin(self._motion_time * 0.3) * 3
+        for button, _ in self.play_buttons:
+            button.set_dynamic_offset((play_horizontal, play_vertical))
+
+        util_vertical = math.sin(self._motion_time * 0.8 + 1.2) * 3
+        util_horizontal = math.sin(self._motion_time * 0.5 + 0.7) * 5
+        for button, _ in self.utility_buttons:
+            button.set_dynamic_offset((util_horizontal, util_vertical))
 

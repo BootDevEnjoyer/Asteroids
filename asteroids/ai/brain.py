@@ -188,6 +188,8 @@ class EnemyBrain(nn.Module):
         # model persistence paths
         self.model_path = "models/ai_enemy_brain.pth"
         self.backup_path = "models/ai_enemy_brain_backup.pth"
+        self.milestone_dir = os.path.join("models", "milestones")
+        os.makedirs(self.milestone_dir, exist_ok=True)
         self.training_logger = TrainingLogger()
         
         # reference to session stats for updating display
@@ -386,7 +388,7 @@ class EnemyBrain(nn.Module):
             print(f"   Phase advancements so far: {self.phase_advancement_count}")
             
             # save milestone checkpoint
-            milestone_path = f"ai_brain_phase_{self.training_phase}_milestone.pth"
+            milestone_path = self.get_milestone_path(self.training_phase)
             self.save_model(milestone_path)
     
     def get_average_reward(self):
@@ -464,6 +466,12 @@ class EnemyBrain(nn.Module):
                 
         except Exception as e:
             print(f"Failed to save AI brain: {e}")
+
+    def get_milestone_path(self, phase=None):
+        """build filesystem path for a specific training phase milestone"""
+        target_phase = phase or self.training_phase
+        filename = f"phase_{target_phase}_milestone.pth"
+        return os.path.join(self.milestone_dir, filename)
     
     def load_model(self):
         """load previously trained model and training state from disk"""
