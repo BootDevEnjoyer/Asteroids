@@ -42,7 +42,7 @@ This reinforcement learning system trains a neural network "brain" to control en
    - Progressive difficulty: Phase 1 (stationary target), Phase 2 (slow-moving), Phase 3 (complex patterns).
    - Phase-dependent spawn distances: Phase 1 (100-200px), Phase 2 (150-300px), Phase 3 (200-400px).
    - Phase-dependent episode limits: Phase 1 (800 steps), Phase 2 (500 steps), Phase 3 (300 steps).
-   - Advance when success rate exceeds thresholds (such as 70% plus 3 consecutive successes in Phase 1) over 30+ episodes.
+- Advance once at least 30 episodes have run in the current phase **and** the rolling success rate kept by the trainer exceeds 70%.
    - **How it works:** Phases modify the environment (target speed, spawn distance, time pressure), resetting some parameters (such as boosting noise) for adaptation. This mitigates local optima, a common reinforcement learning challenge.
 
 5. **Training Loop**:
@@ -59,13 +59,13 @@ A bounded, normalized 5-dimensional vector ensures Markovian properties (full ob
 - **Distance**: minimum(1, distance / 800), range [0, 1]
 - **Speed**: minimum(1, speed / (ENEMY_SPEED * 2)), range [0, 1]
 - **Alignment**: velocity dot product with target direction, range [-1, 1] (rewards efficient movement)
-- **Angular velocity**: (target_angle - current_angle) / pi, range [-1, 1] (captures turning dynamics)
+- **Heading error**: (angle_to_player - current_angle) / pi, range [-1, 1] (tells the agent which way to turn)
 
 **Shortcoming note:** As a first-time reinforcement learning project, the state ignores environmental obstacles (such as asteroids), potentially limiting generalization - a simplification for focus on pursuit basics. Future work: Add ray-casting or grid features for full Partially Observable Markov Decision Process handling.
 
 ### Action Space Design
 
-Actions adjust target_angle = angle_to_player + (output * pi/2), with modulo 2*pi bounding. This prevents accumulation issues (such as infinite spinning).
+Actions are interpreted as relative turn commands: target_angle = current_angle + (output * pi/2), then the ship slews toward that heading at a capped turn rate. This keeps maneuvering smooth and prevents angle accumulation bugs (such as infinite spinning).
 
 **Shortcoming:** Single-dimensional action omits thrust control, assuming constant speed - a learner's choice to isolate turning logic. Enhancement: Multi-output for full control.
 
@@ -93,14 +93,17 @@ Compact architectures for efficiency, demonstrating function approximation in hi
 ## Training Commands and Performance
 
 ```bash
-# Visual training (default 5x speed)
+# Default headless training at 5x speed
 python run_training.py
 
-# Accelerated training with graphics
+# Enable graphics (still honors --speed, default 5x)
+python run_training.py --graphics
+
+# Clamp-safe speed multiplier between 0.1x and 20x
 python run_training.py --speed 10.0
 
-# Headless mode (fastest, approximately 2000 episodes per hour)
-python run_training.py --headless --speed 20.0
+# Five-minute smoke test (works with any other flags)
+python run_training.py --quick-test
 ```
 
 **Benchmarks:** Graphics mode (60-180 frames per second), Headless mode (up to 2000 episodes per hour, less than 100 megabytes memory).
