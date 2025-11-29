@@ -293,13 +293,10 @@ class NeuralEnemy(CircleShape):
         current_state = self.state_collector.collect_state(self, self.player_target)
         angle_adjustment = self.brain.get_action(current_state)
 
-        direction_to_player = self.player_target.position - self.position
-        if direction_to_player.length() > 0:
-            angle_to_player = math.atan2(direction_to_player.y, direction_to_player.x)
-            adjustment_radians = angle_adjustment.item() * math.pi * 0.5
-            self.target_angle = angle_to_player + adjustment_radians
-        else:
-            self.target_angle = self.current_angle
+        # Treat network output as desired turn direction relative to current heading.
+        # Positive = turn left, Negative = turn right.
+        turn_offset = angle_adjustment.item() * math.pi * 0.5
+        self.target_angle = self.current_angle + turn_offset
 
         self.current_angle = self.current_angle % (2 * math.pi)
         self.target_angle = self.target_angle % (2 * math.pi)
@@ -406,7 +403,7 @@ class NeuralEnemy(CircleShape):
         self.target_angle = self.current_angle
 
         self.episode_ended = False
-        self.initial_approach = False  # Respawns are close to player, no approach needed
+        self.initial_approach = False  
     
     def draw(self, screen):
         pulse = math.sin(self.pulse_timer * 3) * 0.2 + 1.0

@@ -287,7 +287,9 @@ def main(auto_training=False, training_speed=1.0, headless=False):
 
             if game_mode_config.auto_restart and ctx:
                 ctx.auto_restart_timer += dt
-                if ctx.auto_restart_timer >= 2.0:
+                # Scale restart delay inversely with speed (2s at 1x, 0.1s at 20x)
+                restart_delay = max(0.1, 2.0 / game_mode_config.speed_multiplier)
+                if ctx.auto_restart_timer >= restart_delay:
                     print(f"Auto-restart #{ctx.session_stats['auto_restarts'] + 1}")
                     ctx = reset_game_context(ctx)
                     ctx.session_stats['auto_restarts'] += 1

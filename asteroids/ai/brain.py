@@ -555,19 +555,20 @@ class GameStateCollector:
         [1]: distance to player (normalized 0-1) 
         [2]: current movement speed (normalized 0-1)
         [3]: alignment with target direction (-1 to 1)
-        [4]: angular velocity (turning rate)
+        [4]: relative angle - signed direction to turn (-1 to 1)
         """
         
         # calculate direct distance to player without screen wrapping
         direction_to_player = player.position - enemy.position
         distance_to_player = direction_to_player.length()
         
-        # calculate angle to player
+        # calculate angle to player (absolute, in world coordinates)
         if distance_to_player > 0:
             angle_to_player = math.atan2(direction_to_player.y, direction_to_player.x)
-            # normalize angle from [-π, π] to [-1, 1]
+            # normalize angle from [-pi, pi] to [-1, 1]
             normalized_angle = angle_to_player / math.pi
         else:
+            angle_to_player = 0.0
             normalized_angle = 0.0
         
         # normalize distance (0 = touching, 1 = far away)
@@ -586,25 +587,26 @@ class GameStateCollector:
             current_direction = enemy_velocity.normalize()
             alignment = target_direction.dot(current_direction)  # -1 to 1
         
-        # calculate angular velocity (turning rate)
-        angular_velocity = 0.0
-        if hasattr(enemy, 'current_angle') and hasattr(enemy, 'target_angle'):
-            angle_diff = enemy.target_angle - enemy.current_angle
-            # wrap to [-π, π]
-            while angle_diff > math.pi:
-                angle_diff -= 2 * math.pi
-            while angle_diff < -math.pi:
-                angle_diff += 2 * math.pi
+        # calculate signed relative angle: which way should the enemy turn?
+        # positive = player is to the left (turn left), negative = player is to the right
+        relative_angle = 0.0
+        if hasattr(enemy, 'current_angle'):
+            relative_angle = angle_to_player - enemy.current_angle
+            # wrap to [-pi, pi]
+            while relative_angle > math.pi:
+                relative_angle -= 2 * math.pi
+            while relative_angle < -math.pi:
+                relative_angle += 2 * math.pi
             # normalize to [-1, 1]
-            angular_velocity = angle_diff / math.pi
+            relative_angle = relative_angle / math.pi
         
         # create state tensor with normalized features
         state = torch.tensor([
             normalized_angle,     # where is the player? (-1 to 1)
             normalized_distance,  # how far is the player? (0 to 1)  
             normalized_speed,     # how fast am I moving? (0 to 1)
-            alignment,           # am I moving toward the player? (-1 to 1)
-            angular_velocity     # how much am I turning? (-1 to 1)
+            alignment,            # am I moving toward the player? (-1 to 1)
+            relative_angle        # which way should I turn? (-1 to 1)
         ], dtype=torch.float32)
         
         return state

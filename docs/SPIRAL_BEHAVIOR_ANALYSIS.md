@@ -186,13 +186,3 @@ This provides the network with:
 The optimal policy becomes learnable:
 
 $$\text{adjustment} = -k \cdot \theta_r \quad \text{for some } k > 0$$
-
-## Impact of Fix
-
-After implementing the relative angle feature:
-1. Network can learn directional turning (left vs right)
-2. Spiral behavior should disappear
-3. Direct pursuit or intercepting trajectories become possible
-4. Training convergence may improve due to actionable state information
-
-**Note**: Changing the state space requires resetting the AI brain, as the trained weights are incompatible with the new input dimensions/semantics.
