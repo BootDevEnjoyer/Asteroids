@@ -132,7 +132,7 @@ Sources of positive bias:
 
 1. **PyTorch Weight Initialization**
    - `nn.Linear` uses Kaiming uniform initialization
-   - Final layer bias initialized from $\text{Uniform}\left(-\frac{1}{\sqrt{n}}, \frac{1}{\sqrt{n}}\right)$
+- Final layer bias initialized from $\mathcal{U}\!\left(-\frac{1}{\sqrt{n}}, \frac{1}{\sqrt{n}}\right)$
    - With $n = 32$, bias $\sim \text{Uniform}(-0.177, 0.177)$
    - Any non-zero initialization creates directional preference
 
