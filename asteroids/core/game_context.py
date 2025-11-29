@@ -31,12 +31,9 @@ def _default_session_stats() -> Dict[str, Any]:
 @dataclass
 class GameContext:
     """
-    Container for all active game session state.
-    
-    Encapsulates sprite groups, game objects, and session tracking
-    that were previously scattered as local variables in main().
+    Container for the active game session state, keeping sprite groups,
+    game objects, and session tracking in one place.
     """
-    # Sprite groups
     updatable: pygame.sprite.Group
     drawable: pygame.sprite.Group
     asteroid_group: pygame.sprite.Group
@@ -44,14 +41,12 @@ class GameContext:
     enemy_group: pygame.sprite.Group
     enemy_shot_group: pygame.sprite.Group
 
-    # Game objects
     player: Player
     asteroid_field: AsteroidField
     enemy_spawner: EnemySpawner
     starfield: Starfield
     ai_display: AIMetricsDisplay
 
-    # Session tracking
     session_stats: Dict[str, Any] = field(default_factory=_default_session_stats)
     score: int = 0
     training_time: float = 0.0
@@ -75,7 +70,7 @@ def create_sprite_groups() -> tuple:
     enemy_group = pygame.sprite.Group()
     enemy_shot_group = pygame.sprite.Group()
 
-    # Configure sprite class containers
+    # Register class-level containers so new sprites auto-populate the right groups
     Player.containers = (updatable, drawable)  # type: ignore
     Asteroid.containers = (updatable, drawable, asteroid_group)  # type: ignore
     AsteroidField.containers = (updatable,)  # type: ignore
@@ -104,22 +99,18 @@ def create_game_context(
     Returns:
         Fully initialized GameContext
     """
-    # Create sprite groups
     groups = create_sprite_groups()
     updatable, drawable, asteroid_group, shot_group, enemy_group, enemy_shot_group = groups
 
-    # Create player at screen center
     player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
 
-    # Create field spawners (disable asteroids during AI training)
+    # Disable asteroid spawns while training to keep the AI reward signal focused
     asteroid_field = AsteroidField(enabled=not training_mode)
     enemy_spawner = EnemySpawner(enemy_group, enemy_type=enemy_type, training_mode=training_mode)
 
-    # Create visual components
     starfield = Starfield(num_layers=3, stars_per_layer=75)
     ai_display = AIMetricsDisplay()
 
-    # Initialize or preserve session stats
     if preserve_session_stats is not None:
         session_stats = preserve_session_stats
     else:
@@ -162,7 +153,6 @@ def reset_game_context(ctx: GameContext, enemy_type: Optional[str] = None) -> Ga
     Returns:
         Fresh GameContext with preserved session statistics
     """
-    # Preserve enemy type from existing spawner if not overridden
     actual_enemy_type = enemy_type if enemy_type else ctx.enemy_spawner.enemy_type
     
     return create_game_context(

@@ -47,13 +47,11 @@ class Button:
         current_color = self.hover_color if self.is_hovered else self.color
         border_width = 3 if self.is_hovered else 2
 
-        # Button background
         pygame.draw.rect(screen, current_color, self.rect, border_radius=8)
         pygame.draw.rect(
             screen, self.border_color, self.rect, border_width, border_radius=8
         )
 
-        # Main text
         font, subtitle_font = self._get_fonts()
         text_surface = font.render(self.text, True, (255, 255, 255))
         text_rect = text_surface.get_rect()
@@ -61,7 +59,6 @@ class Button:
         text_rect.centery = self.rect.centery - (10 if self.subtitle else 0)
         screen.blit(text_surface, text_rect)
 
-        # Subtitle text
         if self.subtitle:
             subtitle_color = (180, 180, 200) if not self.is_hovered else (220, 220, 240)
             subtitle_surface = subtitle_font.render(self.subtitle, True, subtitle_color)
@@ -83,7 +80,6 @@ class MenuScreen:
         self.buttons: List[Tuple[Button, str]] = []
         self._create_buttons()
         
-        # Cache fonts for title and footer rendering
         self._title_font = pygame.font.Font(None, 72)
         self._subtitle_font = pygame.font.Font(None, 32)
         self._footer_font = pygame.font.Font(None, 24)
@@ -157,31 +153,25 @@ class MenuScreen:
 
     def draw(self, screen: pygame.Surface) -> None:
         """Render the complete menu screen."""
-        # Background
         screen.fill((5, 5, 15))
         self.starfield.draw(screen)
         self.starfield.add_twinkle_effect(screen)
 
-        # Title
         self._draw_title(screen)
 
-        # Buttons
         for button, _ in self.buttons:
             button.draw(screen)
 
-        # Footer
         self._draw_footer(screen)
 
     def _draw_title(self, screen: pygame.Surface) -> None:
         """Render the game title and subtitle."""
-        # Main title
         title_text = self._title_font.render("ASTEROIDS", True, (255, 255, 255))
         title_rect = title_text.get_rect()
         title_rect.centerx = SCREEN_WIDTH // 2
         title_rect.y = 80
         screen.blit(title_text, title_rect)
 
-        # Subtitle
         subtitle_text = self._subtitle_font.render(
             "Neural Network AI Demonstration", True, (150, 180, 255)
         )
@@ -190,7 +180,6 @@ class MenuScreen:
         subtitle_rect.y = 145
         screen.blit(subtitle_text, subtitle_rect)
 
-        # Decorative line
         line_y = 185
         line_width = 300
         line_start = (SCREEN_WIDTH // 2 - line_width // 2, line_y)

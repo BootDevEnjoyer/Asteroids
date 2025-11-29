@@ -7,7 +7,8 @@ from asteroids.core.constants import *
 
 
 class AsteroidField(pygame.sprite.Sprite):
-    # manages procedural asteroid spawning from screen edges
+    """Manages procedural asteroid spawning from screen edges."""
+
     edges = [
         [
             pygame.Vector2(1, 0),
@@ -32,27 +33,21 @@ class AsteroidField(pygame.sprite.Sprite):
     ]
 
     def __init__(self, enabled: bool = True) -> None:
-        # initialize spawn timer for asteroid generation
         pygame.sprite.Sprite.__init__(self, self.containers) # type: ignore
         self.spawn_timer = 0.0
         self.enabled = enabled
 
     def spawn(self, radius: float, position: pygame.Vector2, velocity: pygame.Vector2) -> None:
-        # create new asteroid with specified properties
         asteroid = Asteroid(position.x, position.y, radius)
         asteroid.velocity = velocity
 
     def update(self, dt: float) -> None:
-        # skip spawning when disabled (during AI training)
         if not self.enabled:
             return
-            
-        # handle asteroid spawning based on timer intervals
+
         self.spawn_timer += dt
         if self.spawn_timer > ASTEROID_SPAWN_RATE:
             self.spawn_timer = 0
-
-            # select random edge and generate spawn parameters
             edge = random.choice(self.edges)
             speed = random.randint(100, 150)
             velocity = edge[0] * speed

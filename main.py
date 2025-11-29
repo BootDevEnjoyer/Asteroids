@@ -121,32 +121,27 @@ def draw_game_over_screen(screen, font, score, show_menu_option=True):
     pygame.display.flip()
 
 def draw_auto_training_overlay(screen, font, session_stats):
-    """render training progress overlay for automatic mode"""
-    # training session info panel dimensions
+    """Render training progress overlay for automatic mode."""
     panel_width = 400
     panel_height = 220
     panel_x = 10
     panel_y = 10
-    
-    # semi-transparent background
+
     panel_surface = pygame.Surface((panel_width, panel_height))
     panel_surface.set_alpha(200)
     panel_surface.fill((10, 40, 10))
     screen.blit(panel_surface, (panel_x, panel_y))
-    
-    # green border for training mode
-    pygame.draw.rect(screen, (0, 255, 0), 
+
+    pygame.draw.rect(screen, (0, 255, 0),
                     (panel_x, panel_y, panel_width, panel_height), 3)
-    
-    # title display
+
     title_font = pygame.font.Font(None, 32)
     title_text = title_font.render("AUTOMATIC TRAINING MODE", True, (0, 255, 0))
     screen.blit(title_text, (panel_x + 10, panel_y + 8))
-    
-    # session statistics calculation
+
     small_font = pygame.font.Font(None, 24)
     y_offset = panel_y + 45
-    
+
     session_time = time.time() - session_stats['start_time']
     hours = int(session_time // 3600)
     minutes = int((session_time % 3600) // 60)
@@ -174,63 +169,46 @@ def main(auto_training=False, training_speed=1.0, headless=False):
     clock = pygame.time.Clock()
     dt = 0
     font = pygame.font.Font(None, 36)
-    
-    # Create screen
+
     if not headless:
         screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Asteroids")
     else:
         screen = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-    # Determine initial state based on CLI arguments
     if headless or auto_training:
-        # CLI mode: skip menu, go directly to training
         current_state = GameState.RL_TRAINING
         print("Starting Asteroids AI Training!")
         print(f"Auto Training: {auto_training}")
         print(f"Training Speed: {training_speed}x")
         print(f"Headless Mode: {headless}")
     else:
-        # Interactive mode: start with menu
         current_state = GameState.MENU
         print("Starting Asteroids - Use menu to select mode")
-    
+
     print(f"Screen: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
-    
-    # Create config for current state
+
     config = GameConfig.for_state(current_state, training_speed)
-    
-    # Initialize menu (always created for potential return-to-menu)
     menu = MenuScreen()
-    
-    # Game context (created when entering a game state)
     ctx: Optional[GameContext] = None
-    
-    # Previous state for tracking transitions
     previous_state: Optional[GameState] = None
-    
-    # Track the last game mode for restart functionality
     last_game_mode: GameState = GameState.RL_TRAINING
-    
-    # Get AI brain reference
+
     ai_brain = get_global_brain()
     print(f"AI Brain loaded - Phase: {ai_brain.training_phase}, Episodes: {ai_brain.training_steps}")
 
     running = True
     while running:
-        # Handle state transitions
         if current_state != previous_state:
             previous_state = current_state
             config = GameConfig.for_state(current_state, training_speed)
-            
-            # Create game context when entering a game state
+
             if current_state in (GameState.RL_TRAINING, GameState.RL_SHOWCASE, GameState.CLASSIC_PLAY):
                 training_mode = not config.player_controlled
                 ctx = create_game_context(enemy_type=config.enemy_type, training_mode=training_mode)
                 ai_brain.set_session_stats(ctx.session_stats)
                 last_game_mode = current_state
-                
-                # Set window title based on state
+
                 if not headless:
                     titles = {
                         GameState.RL_TRAINING: "Asteroids - AI Training Mode",
@@ -238,10 +216,9 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                         GameState.CLASSIC_PLAY: "Asteroids - Classic Mode",
                     }
                     pygame.display.set_caption(titles.get(current_state, "Asteroids"))
-                
+
                 print(f"Entered {current_state.name} mode")
-        
-        # Process events
+
         next_state: Optional[GameState] = None
         
         for event in pygame.event.get():
@@ -256,16 +233,13 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                 running = False
                 break
             
-            # State-specific event handling
             if current_state == GameState.MENU:
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     running = False
                     break
-                # Handle menu button clicks
                 selected = menu.handle_event(event)
                 if selected:
                     if selected == "RESET_AI":
-                        # Archive and reset AI model without changing state
                         ai_brain, archived = reset_global_brain()
                         print(f"AI model reset complete. Ready for fresh training!")
                     else:
@@ -280,7 +254,6 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                         running = False
                         break
                     elif event.key == pygame.K_y and ctx:
-                        # Restart current game mode
                         ctx = reset_game_context(ctx)
                         ctx.game_over = False
                         ctx.session_stats['auto_restarts'] += 1
@@ -299,12 +272,10 @@ def main(auto_training=False, training_speed=1.0, headless=False):
         if not running:
             break
         
-        # Apply state transition
         if next_state:
             current_state = next_state
             continue
-        
-        # State-specific update and render
+
         if current_state == GameState.MENU:
             menu.update(dt)
             if not headless:
@@ -312,16 +283,14 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                 pygame.display.flip()
         
         elif current_state == GameState.GAME_OVER:
-            # Check if the game mode we came from had auto_restart enabled
             game_mode_config = GameConfig.for_state(last_game_mode, training_speed)
-            
+
             if game_mode_config.auto_restart and ctx:
                 ctx.auto_restart_timer += dt
                 if ctx.auto_restart_timer >= 2.0:
                     print(f"Auto-restart #{ctx.session_stats['auto_restarts'] + 1}")
                     ctx = reset_game_context(ctx)
                     ctx.session_stats['auto_restarts'] += 1
-                    # Return to the game state we came from
                     current_state = last_game_mode
                     continue
             
@@ -329,17 +298,15 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                 draw_game_over_screen(screen, font, ctx.score, show_menu_option=not game_mode_config.auto_restart)
         
         elif current_state in (GameState.RL_TRAINING, GameState.RL_SHOWCASE, GameState.CLASSIC_PLAY) and ctx:
-            # Active gameplay update
             if not ctx.game_over:
                 screen.fill("black")
-                
-                # Render starfield
+
                 if not headless:
                     ctx.starfield.update(dt, ctx.player.velocity if hasattr(ctx.player, 'velocity') else None)
                     ctx.starfield.draw(screen)
                     ctx.starfield.add_twinkle_effect(screen)
-                
-                # Training mode: control player movement based on AI training phase
+
+                # Player movement is scripted during training to provide predictable targets
                 if not config.player_controlled:
                     ctx.training_time += dt
                     
@@ -349,7 +316,6 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                             current_phase = enemy.brain.training_phase
                             break
                     
-                    # Override player controls based on training phase
                     if current_phase == 1:
                         center_x, center_y = SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2
                         ctx.player.position = pygame.Vector2(center_x, center_y)
@@ -410,16 +376,15 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                 
                 effective_dt = dt * config.speed_multiplier
                 ctx.enemy_spawner.update(effective_dt, ctx.player, ctx.asteroid_group)
-                
-                # Selective updating based on training phase
+
+                # Skip player update in early phases so scripted position isn't overwritten
                 if not config.player_controlled and current_phase < 3:
                     for obj in ctx.updatable:
                         if obj != ctx.player:
                             obj.update(effective_dt)
                 else:
                     ctx.updatable.update(effective_dt)
-                
-                # Collision detection: asteroids vs player
+
                 for asteroid in ctx.asteroid_group:
                     if ctx.player.check_collision(asteroid):
                         print("Game over! Hit asteroid")
@@ -433,8 +398,7 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                             shot.kill()
                             ctx.score += 2 if asteroid.radius <= ASTEROID_MIN_RADIUS else 1
                             asteroid.split()
-                
-                # Collision detection: enemies vs player
+
                 if not ctx.game_over:
                     for enemy in ctx.enemy_group:
                         if ctx.player.check_collision(enemy):
@@ -465,8 +429,7 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                                 enemy.kill()
                                 ctx.score += 5
                                 break
-                
-                # Collision detection: enemy shots vs player
+
                 if not ctx.game_over:
                     for enemy_shot in ctx.enemy_shot_group:
                         if ctx.player.check_collision(enemy_shot):
@@ -478,15 +441,13 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                                 ctx.session_stats['total_games'] += 1
                                 ctx.session_stats['ai_victories'] += 1
                             break
-                
-                # Periodic auto-save
+
                 if config.training_enabled and time.time() - ctx.session_stats['last_save_time'] > 300:
                     print("Periodic auto-save...")
                     save_global_brain()
                     ctx.session_stats['model_saves'] += 1
                     ctx.session_stats['last_save_time'] = time.time()
-                
-                # Render game
+
                 if not ctx.game_over and not headless:
                     for sprite in ctx.drawable:
                         sprite.draw(screen)
@@ -496,8 +457,7 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                     score_rect.centerx = SCREEN_WIDTH // 2
                     score_rect.y = 20
                     screen.blit(score_text, score_rect)
-                    
-                    # Mode status display
+
                     if not config.player_controlled:
                         current_phase = 1
                         for enemy in ctx.enemy_group:
@@ -517,15 +477,13 @@ def main(auto_training=False, training_speed=1.0, headless=False):
                         mode_rect.centerx = SCREEN_WIDTH // 2
                         mode_rect.y = 60
                         screen.blit(mode_text, mode_rect)
-                    
-                    # Training overlay
+
                     if config.show_metrics:
                         draw_auto_training_overlay(screen, font, ctx.session_stats)
                         ctx.ai_display.draw_metrics(screen, ai_brain)
                     
                     pygame.display.flip()
             else:
-                # Game over - transition to GAME_OVER state
                 current_state = GameState.GAME_OVER
                 continue
         
@@ -533,7 +491,7 @@ def main(auto_training=False, training_speed=1.0, headless=False):
         dt = clock.tick(target_fps) / 1000
 
 def parse_arguments():
-    """parse command line arguments for different training modes"""
+    """Parse command line arguments for different training modes."""
     parser = argparse.ArgumentParser(description='Asteroids AI Training Game')
     parser.add_argument('--auto-train', action='store_true', 
                        help='Enable automatic training mode (no user intervention required)')
@@ -545,8 +503,7 @@ def parse_arguments():
         
 if __name__ == "__main__":
     args = parse_arguments()
-    
-    # validate and constrain arguments
+
     if args.speed < 0.1 or args.speed > 20.0:
         print("Warning: Training speed should be between 0.1 and 20.0")
         args.speed = max(0.1, min(20.0, args.speed))
