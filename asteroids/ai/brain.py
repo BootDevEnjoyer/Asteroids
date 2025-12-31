@@ -1,7 +1,7 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import pygame
+import torch #type: ignore
+import torch.nn as nn #type: ignore
+import torch.optim as optim #type: ignore
+import pygame #type: ignore
 import math
 import os
 import json

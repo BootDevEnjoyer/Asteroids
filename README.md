@@ -24,6 +24,8 @@ Use the menu to select a mode:
 - **Watch AI Learn** - See neural networks train in real-time
 - **Watch Trained AI** - Observe learned behaviors
 - **Play Classic** - Traditional gameplay with mixed enemies
+- **Reset AI Model** - Archive current model and start fresh training
+- **Clean Up Runs** - Remove old archived models and milestone files
 
 ## Controls
 
@@ -43,11 +45,17 @@ For faster, unattended training sessions:
 # Default headless training (5x speed)
 uv run python run_training.py
 
-# Maximum speed training
+# Fast training (10x speed)
 uv run python run_training.py --speed 10.0
+
+# Maximum speed training (up to 20x)
+uv run python run_training.py --speed 20.0
 
 # Training with graphics for monitoring
 uv run python run_training.py --graphics
+
+# Quick 5-minute test run
+uv run python run_training.py --quick-test
 ```
 
 ## Requirements
